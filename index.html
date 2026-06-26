@@ -1097,7 +1097,7 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
 </div>
 
 <!-- パスワード初期化依頼モーダル -->
-<div class="modal-overlay" id="modal-password-reset-request">
+<div class="modal-overlay" id="modal-password-reset-request" style="z-index: 10000;">
   <div class="modal" style="width:440px;">
     <button class="modal-close" onclick="closeModal('modal-password-reset-request')"><i class="ti ti-x"></i></button>
     <div class="modal-title"><i class="ti ti-mail" style="color:var(--accent);"></i> パスワード初期化のご依頼</div>
@@ -1192,6 +1192,16 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
 
   <!-- 設定フッター -->
   <div class="sidebar-footer">
+    <!-- PW初期化依頼通知バナー（管理者のみ表示） -->
+    <div id="pw-reset-notification"
+      onclick="openMembersScreen()"
+      style="display:none; margin:0 8px 8px 8px; padding:10px 12px; background:var(--badge-yellow-bg, #FAEEDA); border:1px solid #fcd34d; border-radius:8px; cursor:pointer; align-items:center; gap:8px;">
+      <span style="font-size:16px;">&#128276;</span>
+      <div>
+        <div style="font-size:12px; font-weight:600; color:var(--badge-yellow-fg, #854F0B);">PW初期化依頼</div>
+        <div id="pw-reset-count-label" style="font-size:11px; color:var(--badge-yellow-fg, #854F0B);"></div>
+      </div>
+    </div>
     <div id="settings-dropdown" class="settings-dropdown">
       <button class="settings-dropdown-item" onclick="openMembersScreen()">
         <i class="ti ti-users-group"></i> メンバー管理
@@ -4059,6 +4069,9 @@ function completeLogin() {
   if (label) {
     label.textContent = currentUser.name + (currentUser.role === 'admin' ? '（管理者）' : '');
   }
+
+  // PW初期化依頼通知バナーを更新
+  updatePwResetNotification();
 }
 
 // ログアウト
@@ -4141,6 +4154,8 @@ function executePasswordInit() {
   }
   closeModal('pw-init-modal');
   alert('✓ パスワードを初期化しました。\n次回ログイン時にパスワードの再設定が求められます。');
+  // PW初期化依頼通知バナーを更新（isInitialPwが増えた可能性）
+  updatePwResetNotification();
 }
 
 // =========================================================
@@ -4376,9 +4391,41 @@ function submitPasswordResetRequest() {
     return;
   }
 
-  sucEl.textContent = '管理者に初期化依頼を送信しました。しばらくお待ちください。';
+  // パスワードを初期値にリセット
+  member.isInitialPw = true;
+  member.password = 'axis0120';
+
+  sucEl.textContent = '初期化依頼を受け付けました。パスワードを axis0120 にリセットしました。';
   sucEl.style.display = 'block';
-  setTimeout(() => closeModal('modal-password-reset-request'), 2000);
+
+  // PW初期化依頼通知バナーを更新（管理者がログイン中の場合に即時反映）
+  updatePwResetNotification();
+
+  setTimeout(() => closeModal('modal-password-reset-request'), 2500);
+}
+
+// =========================================================
+// PW初期化依頼通知バナー更新
+// =========================================================
+function updatePwResetNotification() {
+  const notification = document.getElementById('pw-reset-notification');
+  if (!notification) return;
+
+  // 管理者以外は常に非表示
+  if (!currentUser || currentUser.role !== 'admin') {
+    notification.style.display = 'none';
+    return;
+  }
+
+  // isInitialPw === true のメンバーをカウント（自分自身は除く）
+  const count = MEMBERS_DB.filter(m => m.isInitialPw === true && m.email !== currentUser.email).length;
+
+  if (count === 0) {
+    notification.style.display = 'none';
+  } else {
+    notification.style.display = 'flex';
+    document.getElementById('pw-reset-count-label').textContent = count + '件の依頼があります';
+  }
 }
 
 /* =============================================
