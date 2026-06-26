@@ -4003,8 +4003,8 @@ function doLogin() {
 
   currentUser = member;
 
-  // 初期パスワードの場合は強制変更画面へ
-  if (member.isInitialPw) {
+  // 初期パスワードの場合は強制変更画面へ（isInitialPw または axis0120 のままのケース）
+  if (member.isInitialPw || member.password === 'axis0120') {
     document.getElementById('login-screen').classList.remove('active');
     document.getElementById('reset-screen').classList.add('active');
     document.getElementById('reset-new-pw').value = '';
@@ -4150,7 +4150,7 @@ function executePasswordInit() {
   const member = MEMBERS_DB.find(m => m.email === pwInitTargetEmail);
   if (member) {
     member.password = 'axis0120';
-    member.isInitialPw = true;
+    member.isInitialPw = false; // 管理者が対応済み → 依頼フラグをクリア（次回ログイン時はpasswordチェックで強制変更）
   }
   closeModal('pw-init-modal');
   alert('✓ パスワードを初期化しました。\n次回ログイン時にパスワードの再設定が求められます。');
