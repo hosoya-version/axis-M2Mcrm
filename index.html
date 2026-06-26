@@ -4154,6 +4154,8 @@ function executePasswordInit() {
   }
   closeModal('pw-init-modal');
   alert('✓ パスワードを初期化しました。\n次回ログイン時にパスワードの再設定が求められます。');
+  // メンバー一覧を再描画（ボタン表示をオレンジに更新）
+  renderMembersTable();
   // PW初期化依頼通知バナーを更新（isInitialPwが増えた可能性）
   updatePwResetNotification();
 }
@@ -4188,6 +4190,9 @@ function renderMembersTable(filter) {
     const deleteBtn = isCurrentUser
       ? `<button class="btn btn-sm btn-danger" style="opacity:0.4;cursor:not-allowed;" disabled title="自分自身は削除できません"><i class="ti ti-trash"></i> 削除</button>`
       : `<button class="btn btn-sm btn-danger" onclick="openDeleteMember('${m.email}')"><i class="ti ti-trash"></i> 削除</button>`;
+    const pwBtn = m.isInitialPw
+      ? `<button onclick="confirmPasswordInit('${m.email}', '${m.name}')" style="background:#f97316; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:4px;">&#128276; PW初期化待ち</button>`
+      : `<button class="btn btn-sm btn-secondary" onclick="confirmPasswordInit('${m.email}', '${m.name}')"><i class="ti ti-key"></i> パスワード変更</button>`;
     return `<tr>
       <td>${m.company}</td>
       <td class="fw-700">${m.name}</td>
@@ -4195,7 +4200,7 @@ function renderMembersTable(filter) {
       <td>${phone}</td>
       <td>${roleBadge}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-secondary" onclick="confirmPasswordInit('${m.email}', '${m.name}')"><i class="ti ti-key"></i> パスワード変更</button>
+        ${pwBtn}
         <button class="btn btn-sm btn-secondary" onclick="openEditMember('${m.email}')"><i class="ti ti-edit"></i> 編集</button>
         ${deleteBtn}
       </td>
