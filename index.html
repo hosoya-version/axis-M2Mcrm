@@ -911,6 +911,35 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
 .ps-dlv-banner {
   background: #E0F2FE;
 }
+/* ページネーション・操作ボタン用スタイル */
+.page-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.page-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
+}
+.page-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 </style>
 </head>
 <body>
@@ -1206,7 +1235,7 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     <button class="sidebar-item" data-page="contacts">
       <i class="ti ti-users"></i> 担当者管理
     </button>
-    <button class="sidebar-item">
+    <button class="sidebar-item" data-page="agencies">
       <i class="ti ti-building"></i> 代理店管理
     </button>
   </div>
@@ -1411,9 +1440,9 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     <button class="btn btn-primary"><i class="ti ti-plus"></i> 新規登録</button>
   </div>
 
-  <div class="search-bar">
+  <div class="search-bar" style="margin-bottom: 16px;">
     <i class="ti ti-search"></i>
-    <input type="text" id="company-search" placeholder="企業名・拠点名で絞り込み..." oninput="filterCompanies()">
+    <input type="text" id="company-search" placeholder="企業名・フリガナ・電話・住所・郵便番号で検索..." oninput="applyCompanyFilter()" style="width: 100%; max-width: 400px;">
   </div>
 
   <div class="table-wrap">
@@ -1421,62 +1450,23 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
       <thead>
         <tr>
           <th>企業名</th>
-          <th>拠点名</th>
+          <th>フリガナ</th>
+          <th>電話番号</th>
+          <th>FAX</th>
+          <th>郵便番号</th>
           <th>住所</th>
-          <th>電話</th>
+          <th>アクシスID数</th>
           <th>担当者数</th>
-          <th>親ID数</th>
-          <th>操作</th>
         </tr>
       </thead>
-      <tbody id="company-tbody">
-        <tr data-company="NTT東日本株式会社" data-branch="名古屋支店">
-          <td class="fw-700">NTT東日本株式会社</td>
-          <td>名古屋支店</td>
-          <td>名古屋市中区</td>
-          <td>052-111-0001</td>
-          <td>1名</td>
-          <td>3件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="goToContacts('NTT東日本株式会社')"><i class="ti ti-users"></i> 担当者</button></td>
-        </tr>
-        <tr data-company="NTT東日本株式会社" data-branch="埼玉支店">
-          <td class="fw-700">NTT東日本株式会社</td>
-          <td>埼玉支店</td>
-          <td>さいたま市大宮区</td>
-          <td>048-222-0002</td>
-          <td>1名</td>
-          <td>2件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="goToContacts('NTT東日本株式会社')"><i class="ti ti-users"></i> 担当者</button></td>
-        </tr>
-        <tr data-company="テスト工業株式会社" data-branch="本社">
-          <td class="fw-700">テスト工業株式会社</td>
-          <td>本社</td>
-          <td>大阪市北区</td>
-          <td>06-333-0003</td>
-          <td>2名</td>
-          <td>2件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="goToContacts('テスト工業株式会社')"><i class="ti ti-users"></i> 担当者</button></td>
-        </tr>
-        <tr data-company="サブスク商事株式会社" data-branch="本社">
-          <td class="fw-700">サブスク商事株式会社</td>
-          <td>本社</td>
-          <td>東京都港区</td>
-          <td>03-444-0004</td>
-          <td>1名</td>
-          <td>1件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="goToContacts('サブスク商事株式会社')"><i class="ti ti-users"></i> 担当者</button></td>
-        </tr>
-        <tr data-company="オムロンSS株式会社" data-branch="東京本社">
-          <td class="fw-700">オムロンSS株式会社</td>
-          <td>東京本社</td>
-          <td>東京都品川区</td>
-          <td>03-6718-3708</td>
-          <td>3名</td>
-          <td>9件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="goToContacts('オムロンSS株式会社')"><i class="ti ti-users"></i> 担当者</button></td>
-        </tr>
-      </tbody>
+      <tbody id="company-tbody"></tbody>
     </table>
+  </div>
+
+  <!-- ページネーションコントロール -->
+  <div id="company-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding:0 4px; font-size:13px; color:var(--text-muted);">
+    <div id="company-pagination-info"></div>
+    <div id="company-pagination-buttons" style="display:flex; gap:4px;"></div>
   </div>
 </section>
 
@@ -1493,87 +1483,137 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     </div>
   </div>
 
+  <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+    <!-- 検索窓 -->
+    <input
+      type="text"
+      id="contact-search-input"
+      placeholder="氏名・フリガナ・企業名で検索..."
+      oninput="applyContactFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:260px;"
+    />
+    <!-- 企業名フィルター -->
+    <select id="contact-company-filter" onchange="applyContactFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+      <option value="">企業名（すべて）</option>
+    </select>
+    <!-- クリアボタン -->
+    <button onclick="clearContactFilter()"
+      style="padding:6px 12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+      クリア
+    </button>
+  </div>
+
   <div class="table-wrap">
-    <table>
+    <table id="contact-table">
       <thead>
         <tr>
           <th>氏名</th>
-          <th>役割</th>
+          <th>フリガナ</th>
           <th>企業名</th>
-          <th>拠点</th>
+          <th>部署名</th>
+          <th>役職</th>
           <th>電話</th>
-          <th>メール</th>
-          <th>操作</th>
+          <th>FAX</th>
+          <th>E-mail</th>
+          <th>アクシスID数</th>
         </tr>
       </thead>
-      <tbody id="contacts-tbody">
-        <tr data-company="NTT東日本株式会社">
-          <td class="fw-700">斎藤 健一</td>
-          <td><span class="badge badge-black">★ メイン</span></td>
-          <td>NTT東日本株式会社</td>
-          <td>名古屋支店</td>
-          <td>052-111-0001</td>
-          <td><a href="mailto:saito@ntte.co.jp" style="color:var(--accent);">saito@ntte.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr data-company="NTT東日本株式会社">
-          <td class="fw-700">大園 美咲</td>
-          <td><span class="badge badge-gray">サブ</span></td>
-          <td>NTT東日本株式会社</td>
-          <td>埼玉支店</td>
-          <td>048-222-0002</td>
-          <td><a href="mailto:osono@ntte.co.jp" style="color:var(--accent);">osono@ntte.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr data-company="テスト工業株式会社">
-          <td class="fw-700">鈴木 太郎</td>
-          <td><span class="badge badge-black">★ メイン</span></td>
-          <td>テスト工業株式会社</td>
-          <td>本社</td>
-          <td>06-333-0003</td>
-          <td><a href="mailto:suzuki@test.co.jp" style="color:var(--accent);">suzuki@test.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr data-company="サブスク商事株式会社">
-          <td class="fw-700">田中 花子</td>
-          <td><span class="badge badge-black">★ メイン</span></td>
-          <td>サブスク商事株式会社</td>
-          <td>本社</td>
-          <td>03-444-0004</td>
-          <td><a href="mailto:tanaka@subsc.co.jp" style="color:var(--accent);">tanaka@subsc.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr data-company="オムロンSS株式会社">
-          <td class="fw-700">山田 健太</td>
-          <td><span class="badge badge-black">★ メイン</span></td>
-          <td>オムロンSS株式会社</td>
-          <td>東京本社</td>
-          <td>—</td>
-          <td><a href="mailto:k.yamada@omron-ss.co.jp" style="color:var(--accent);">k.yamada@omron-ss.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr data-company="オムロンSS株式会社">
-          <td class="fw-700">佐藤 一郎</td>
-          <td><span class="badge badge-gray">サブ</span></td>
-          <td>オムロンSS株式会社</td>
-          <td>東京本社</td>
-          <td>03-6718-1234</td>
-          <td><a href="mailto:s.sato@omron-ss.co.jp" style="color:var(--accent);">s.sato@omron-ss.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr data-company="オムロンSS株式会社">
-          <td class="fw-700">田中 美咲</td>
-          <td><span class="badge badge-gray">サブ</span></td>
-          <td>オムロンSS株式会社</td>
-          <td>東京本社</td>
-          <td>03-6718-5678</td>
-          <td><a href="mailto:m.tanaka@omron-ss.co.jp" style="color:var(--accent);">m.tanaka@omron-ss.co.jp</a></td>
-          <td><button class="btn btn-sm btn-secondary"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-      </tbody>
+      <tbody id="contacts-tbody"></tbody>
     </table>
   </div>
 </section>
+
+<!-- ===== 代理店管理 ===== -->
+<section class="page" id="page-agencies">
+  <div class="page-header">
+    <div>
+      <div class="page-title">代理店管理</div>
+      <div class="page-subtitle">提携パートナー・代理店一覧</div>
+    </div>
+    <button class="btn btn-primary" onclick="openAgencyModal()"><i class="ti ti-plus"></i> 新規登録</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="agency-table">
+      <thead>
+        <tr>
+          <th>代理店名</th>
+          <th>フリガナ</th>
+          <th>電話番号</th>
+          <th>メール</th>
+          <th>住所</th>
+          <th>紐づく企業</th>
+          <th>紐づくアクシスID</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 代理店 登録/編集モーダル -->
+<div class="modal-overlay" id="agency-modal">
+  <div class="modal" style="width:550px;max-height:90vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('agency-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="agency-modal-title">代理店 新規登録</div>
+    <input type="hidden" id="agency-edit-id" value="">
+    
+    <div class="form-group">
+      <label class="form-label">代理店名 <span style="color:#ef4444;">*</span></label>
+      <input type="text" class="form-control" id="agency-name" placeholder="株式会社アルファ商事">
+    </div>
+    <div class="form-group">
+      <label class="form-label">フリガナ <span style="color:#ef4444;">*</span></label>
+      <input type="text" class="form-control" id="agency-furigana" placeholder="アルファショウジ">
+    </div>
+    <div class="form-group">
+      <label class="form-label">電話番号</label>
+      <input type="text" class="form-control" id="agency-tel" placeholder="03-1234-5678">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メールアドレス</label>
+      <input type="text" class="form-control" id="agency-email" placeholder="info@alpha.co.jp">
+    </div>
+    <div class="form-group">
+      <label class="form-label">住所</label>
+      <input type="text" class="form-control" id="agency-address" placeholder="東京都新宿区西新宿1-1-1">
+    </div>
+
+    <!-- 紐づく企業 -->
+    <div class="form-group">
+      <label class="form-label">紐づく企業</label>
+      <select class="form-control" id="agency-linked-company" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+
+    <!-- 紐づくアクシスID（複数入力可） -->
+    <div class="form-group">
+      <label class="form-label">紐づくアクシスID</label>
+      <div id="agency-axis-id-list" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" class="agency-axis-id-input"
+            placeholder="例：AX-0001"
+            style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:200px;" />
+          <button type="button" onclick="addAxisIdField()"
+            style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+            ＋追加
+          </button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin-top:4px;">
+        複数登録する場合は「＋追加」ボタンで入力欄を増やしてください。
+      </p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('agency-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveAgency()">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== 4. 商品マスタ ===== -->
 <section class="page" id="page-products">
@@ -3806,42 +3846,403 @@ function navigate(page) {
 
 // サイドバーメニュー初期化
 document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
-  item.addEventListener('click', () => navigate(item.dataset.page));
+  item.addEventListener('click', () => {
+    navigate(item.dataset.page);
+    if (item.dataset.page === 'companies') {
+      companyCurrentPage = 1;
+      applyCompanyFilter();
+    } else if (item.dataset.page === 'contacts') {
+      initContactFilter();
+      applyContactFilter();
+    } else if (item.dataset.page === 'agencies') {
+      renderAgencyTable(agenciesData);
+    }
+  });
 });
 
-// ===== 企業フィルター =====
-function filterCompanies() {
-  const q = document.getElementById('company-search').value.toLowerCase();
-  document.querySelectorAll('#company-tbody tr').forEach(row => {
-    const company = row.dataset.company ? row.dataset.company.toLowerCase() : '';
-    const branch  = row.dataset.branch  ? row.dataset.branch.toLowerCase()  : '';
-    row.style.display = (company.includes(q) || branch.includes(q)) ? '' : 'none';
+// 初回ロード時の初期化
+document.addEventListener('DOMContentLoaded', () => {
+  applyCompanyFilter();
+  initContactFilter();
+  applyContactFilter();
+  renderAgencyTable(agenciesData);
+});
+
+// ===== 企業管理：モックデータ =====
+const companiesData = [
+  { id:1,  name:'NTT東日本株式会社',    furigana:'エヌティティヒガシニホン',      tel:'052-111-0001', zip:'460-0001', address:'愛知県名古屋市中区',     branchName:'名古屋支店', axisIdCount:3, contactCount:1 },
+  { id:2,  name:'NTT東日本株式会社',    furigana:'エヌティティヒガシニホン',      tel:'048-222-0002', zip:'330-0001', address:'埼玉県さいたま市大宮区',  branchName:'埼玉支店',   axisIdCount:2, contactCount:1 },
+  { id:3,  name:'テスト工業株式会社',   furigana:'テストコウギョウ',              tel:'06-333-0003',  zip:'530-0001', address:'大阪府大阪市北区',       branchName:'本社',       axisIdCount:2, contactCount:2 },
+  { id:4,  name:'サブスク商事株式会社', furigana:'サブスクショウジ',              tel:'03-444-0004',  zip:'106-0001', address:'東京都港区六本木',       branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:5,  name:'オムロンSS株式会社',   furigana:'オムロンエスエス',              tel:'03-6718-3708', zip:'140-0001', address:'東京都品川区大崎',       branchName:'東京本社',   axisIdCount:9, contactCount:3 },
+  { id:6,  name:'山田電機株式会社',     furigana:'ヤマダデンキ',                  tel:'011-555-0006', zip:'060-0001', address:'北海道札幌市中央区',     branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:7,  name:'東京通信工業株式会社', furigana:'トウキョウトウシンコウギョウ',  tel:'03-777-0008',  zip:'100-0001', address:'東京都千代田区千代田',   branchName:'本社',       axisIdCount:4, contactCount:1 },
+  { id:8,  name:'福岡システム株式会社', furigana:'フクオカシステム',              tel:'092-999-0010', zip:'810-0001', address:'福岡県福岡市中央区天神', branchName:'本社',       axisIdCount:2, contactCount:1 },
+  { id:9,  name:'仙台精工株式会社',     furigana:'センダイセイコウ',              tel:'022-100-0009', zip:'980-0001', address:'宮城県仙台市青葉区',     branchName:'本社',       axisIdCount:3, contactCount:2 },
+  { id:10, name:'広島重工株式会社',     furigana:'ヒロシマジュウコウ',            tel:'082-200-0010', zip:'730-0001', address:'広島県広島市中区',       branchName:'本社',       axisIdCount:5, contactCount:3 },
+  { id:11, name:'京都セラミック株式会社', furigana:'キョウトセラミック',          tel:'075-300-0011', zip:'600-0001', address:'京都府京都市下京区',     branchName:'本社',       axisIdCount:6, contactCount:2 },
+  { id:12, name:'神戸造船株式会社',     furigana:'コウベゾウセン',                tel:'078-400-0012', zip:'650-0001', address:'兵庫県神戸市中央区',     branchName:'本社',       axisIdCount:2, contactCount:1 },
+  { id:13, name:'横浜貿易株式会社',     furigana:'ヨコハマボウエキ',              tel:'045-500-0013', zip:'220-0001', address:'神奈川県横浜市西区',     branchName:'本社',       axisIdCount:4, contactCount:2 },
+  { id:14, name:'新潟化学株式会社',     furigana:'ニイガタカガク',                tel:'025-600-0014', zip:'950-0001', address:'新潟県新潟市中央区',     branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:15, name:'金沢電子株式会社',     furigana:'カナザワデンシ',                tel:'076-700-0015', zip:'920-0001', address:'石川県金沢市広坂',       branchName:'本社',       axisIdCount:3, contactCount:1 },
+  { id:16, name:'岡山機械株式会社',     furigana:'オカヤマキカイ',                tel:'086-800-0016', zip:'700-0001', address:'岡山県岡山市北区',       branchName:'本社',       axisIdCount:2, contactCount:1 },
+  { id:17, name:'松山食品株式会社',     furigana:'マツヤマショクヒン',            tel:'089-900-0017', zip:'790-0001', address:'愛媛県松山市一番町',     branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:18, name:'静岡物流株式会社',     furigana:'シズオカブツリュウ',            tel:'054-800-0018', zip:'420-0001', address:'静岡県静岡市葵区',       branchName:'本社',       axisIdCount:1, contactCount:2 },
+  { id:19, name:'熊本農業株式会社',     furigana:'クマモトノウギョウ',            tel:'096-900-0019', zip:'860-0001', address:'熊本県熊本市中央区',     branchName:'本社',       axisIdCount:2, contactCount:1 },
+  { id:20, name:'沖縄観光株式会社',     furigana:'オキナワカンコウ',              tel:'098-100-0020', zip:'900-0001', address:'沖縄県那覇市久茂地',     branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:21, name:'札幌IT株式会社',       furigana:'サッポロアイティ',              tel:'011-200-0021', zip:'064-0001', address:'北海道札幌市中央区',     branchName:'本社',       axisIdCount:3, contactCount:2 },
+  { id:22, name:'千葉流通株式会社',     furigana:'チバリュウツウ',                tel:'043-300-0022', zip:'260-0001', address:'千葉県千葉市中央区',     branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:23, name:'埼玉工機株式会社',     furigana:'サイタマコウキ',                tel:'048-400-0023', zip:'338-0001', address:'埼玉県さいたま市南区',   branchName:'本社',       axisIdCount:2, contactCount:1 },
+  { id:24, name:'群馬繊維株式会社',     furigana:'グンマセンイ',                  tel:'027-500-0024', zip:'370-0001', address:'群馬県高崎市八島町',     branchName:'本社',       axisIdCount:1, contactCount:1 },
+  { id:25, name:'長野精工株式会社',     furigana:'ナガノセイコウ',                tel:'026-600-0025', zip:'380-0001', address:'長野県長野市大字長野',   branchName:'本社',       axisIdCount:2, contactCount:1 },
+];
+
+// ===== 企業管理：ページネーション変数 =====
+let companyCurrentPage = 1;
+const COMPANY_PAGE_SIZE = 20;
+let companyFilteredData = [];
+
+function sortCompanies(data) {
+  return [...data].sort((a, b) => b.axisIdCount - a.axisIdCount);
+}
+
+function renderCompanyTable(data) {
+  const tbody = document.querySelector('#company-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  data.forEach(company => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="fw-700">${company.name}</td>
+      <td>${company.furigana}</td>
+      <td>${company.tel}</td>
+      <td>${company.fax || '—'}</td>
+      <td>${company.zip}</td>
+      <td>${company.address}</td>
+      <td>
+        <span onclick="jumpToAxisList('${company.name}')" style="color:var(--accent); cursor:pointer; text-decoration:underline;">
+          ${company.axisIdCount}件
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-secondary" onclick="goToContacts('${company.name}')">
+          <i class="ti ti-users"></i> ${company.contactCount}名
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 }
 
-// ===== 担当者フィルター（企業一覧から遷移） =====
-let contactFilterCompany = null;
+function jumpToAxisList(companyName) {
+  navigate('orders');
+}
 
-function goToContacts(companyName) {
-  contactFilterCompany = companyName;
-  navigate('contacts');
+function renderCompanyPagination() {
+  const infoEl = document.getElementById('company-pagination-info');
+  const btnsEl = document.getElementById('company-pagination-buttons');
+  if (!infoEl || !btnsEl) return;
 
-  const subtitle = document.getElementById('contacts-subtitle');
-  const clearBtn = document.getElementById('contacts-clear-filter');
-  subtitle.textContent = companyName + ' の担当者';
-  clearBtn.style.display = 'inline-flex';
+  const total = companyFilteredData.length;
+  const totalPages = Math.ceil(total / COMPANY_PAGE_SIZE) || 1;
+  const start = (companyCurrentPage - 1) * COMPANY_PAGE_SIZE + 1;
+  const end = Math.min(companyCurrentPage * COMPANY_PAGE_SIZE, total);
 
-  document.querySelectorAll('#contacts-tbody tr').forEach(row => {
-    const co = row.dataset.company || '';
-    row.style.display = co === companyName ? '' : 'none';
+  if (total === 0) {
+    infoEl.textContent = '該当する企業が見つかりません';
+  } else {
+    infoEl.textContent = `${total}件中 ${start}〜${end}件を表示`;
+  }
+
+  btnsEl.innerHTML = '';
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'page-btn';
+  prevBtn.textContent = '前へ';
+  prevBtn.disabled = (companyCurrentPage <= 1);
+  prevBtn.onclick = () => { if (companyCurrentPage > 1) { companyCurrentPage--; updateCompanyView(); } };
+  btnsEl.appendChild(prevBtn);
+
+  for (let i = 1; i <= totalPages; i++) {
+    const numBtn = document.createElement('button');
+    numBtn.className = `page-btn ${i === companyCurrentPage ? 'active' : ''}`;
+    numBtn.textContent = i;
+    numBtn.onclick = () => { companyCurrentPage = i; updateCompanyView(); };
+    btnsEl.appendChild(numBtn);
+  }
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'page-btn';
+  nextBtn.textContent = '次へ';
+  nextBtn.disabled = (companyCurrentPage >= totalPages);
+  nextBtn.onclick = () => { if (companyCurrentPage < totalPages) { companyCurrentPage++; updateCompanyView(); } };
+  btnsEl.appendChild(nextBtn);
+}
+
+function updateCompanyView() {
+  const sorted = sortCompanies(companyFilteredData);
+  const startIndex = (companyCurrentPage - 1) * COMPANY_PAGE_SIZE;
+  const paginated = sorted.slice(startIndex, startIndex + COMPANY_PAGE_SIZE);
+  renderCompanyTable(paginated);
+  renderCompanyPagination();
+}
+
+function applyCompanyFilter() {
+  const qEl = document.getElementById('company-search');
+  const q = qEl ? qEl.value.trim().toLowerCase() : '';
+  companyFilteredData = companiesData.filter(c => {
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.furigana.toLowerCase().includes(q) ||
+      c.tel.includes(q) ||
+      c.address.toLowerCase().includes(q) ||
+      c.zip.includes(q)
+    );
   });
+  companyCurrentPage = 1;
+  updateCompanyView();
+}
+
+// ===== 担当者管理：モックデータ =====
+const contactsData = [
+  { id: 1, name: '斎藤 健一', furigana: 'サイトウ ケンイチ', companyName: 'NTT東日本株式会社', branchName: '名古屋支店', department: '営業部', position: '部長', tel: '052-111-0001', fax: '052-111-0002', email: 'saito@ntte.co.jp', axisIdCount: 3 },
+  { id: 2, name: '大園 美咲', furigana: 'オオゾノ ミサキ', companyName: 'NTT東日本株式会社', branchName: '埼玉支店', department: '技術部', position: '課長', tel: '048-222-0002', fax: '048-222-0003', email: 'osono@ntte.co.jp', axisIdCount: 2 },
+  { id: 3, name: '鈴木 太郎', furigana: 'スズキ タロウ', companyName: 'テスト工業株式会社', branchName: '本社', department: '購買部', position: '主任', tel: '06-333-0003', fax: '06-333-0004', email: 'suzuki@test.co.jp', axisIdCount: 2 },
+  { id: 4, name: '田中 花子', furigana: 'タナカ ハナコ', companyName: 'サブスク商事株式会社', branchName: '本社', department: '総務部', position: '係長', tel: '03-444-0004', fax: '03-444-0005', email: 'tanaka@subsc.co.jp', axisIdCount: 1 },
+  { id: 5, name: '山田 健太', furigana: 'ヤマダ ケンタ', companyName: 'オムロンSS株式会社', branchName: '東京本社', department: '営業部', position: '部長', tel: '—', fax: '03-6718-1235', email: 'k.yamada@omron-ss.co.jp', axisIdCount: 5 },
+  { id: 6, name: '佐藤 一郎', furigana: 'サトウ イチロウ', companyName: 'オムロンSS株式会社', branchName: '東京本社', department: '技術部', position: '課長', tel: '03-6718-1234', fax: '03-6718-1236', email: 's.sato@omron-ss.co.jp', axisIdCount: 3 },
+  { id: 7, name: '田中 美咲', furigana: 'タナカ ミサキ', companyName: 'オムロンSS株式会社', branchName: '東京本社', department: '購買部', position: '担当', tel: '03-6718-5678', fax: '03-6718-5679', email: 'm.tanaka@omron-ss.co.jp', axisIdCount: 1 },
+  { id: 8, name: '伊藤 次郎', furigana: 'イトウ ジロウ', companyName: '山田電機株式会社', branchName: '本社', department: '営業部', position: '課長', tel: '011-555-0006', fax: '011-555-0007', email: 'ito@yamada-e.co.jp', axisIdCount: 1 },
+  { id: 9, name: '渡辺 さくら', furigana: 'ワタナベ サクラ', companyName: '東京通信工業株式会社', branchName: '本社', department: '情報システム部', position: '主任', tel: '03-777-0008', fax: '03-777-0009', email: 'watanabe@ttk.co.jp', axisIdCount: 4 },
+  { id: 10, name: '中村 誠', furigana: 'ナカムラ マコト', companyName: '福岡システム株式会社', branchName: '本社', department: '開発部', position: '部長', tel: '092-999-0010', fax: '092-999-0011', email: 'nakamura@fukuoka-sys.co.jp', axisIdCount: 2 },
+];
+
+function renderContactTable(data) {
+  const tbody = document.querySelector('#contact-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  data.forEach(contact => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${contact.name}</td>
+      <td>${contact.furigana}</td>
+      <td>${contact.companyName}</td>
+      <td>${contact.department}</td>
+      <td>${contact.position}</td>
+      <td>${contact.tel}</td>
+      <td>${contact.fax}</td>
+      <td><a href="mailto:${contact.email}" style="color:#2563eb;">${contact.email}</a></td>
+      <td>
+        <span onclick="jumpToAxisListFromContact('${contact.name}')" style="color:#2563eb;cursor:pointer;text-decoration:underline;">
+          ${contact.axisIdCount}件
+        </span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function jumpToAxisListFromContact(contactName) {
+  navigate('orders');
+}
+
+let contactFilterInitialized = false;
+function initContactFilter() {
+  const select = document.getElementById('contact-company-filter');
+  if (!select || contactFilterInitialized) return;
+  const companies = [...new Set(contactsData.map(c => c.companyName))];
+  companies.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+  contactFilterInitialized = true;
+}
+
+function applyContactFilter() {
+  const keyword = document.getElementById('contact-search-input')?.value || '';
+  const companyFilter = document.getElementById('contact-company-filter')?.value || '';
+  const filtered = contactsData.filter(c => {
+    const matchKeyword = c.name.includes(keyword) || c.furigana.includes(keyword) || c.companyName.includes(keyword);
+    const matchCompany = companyFilter === '' || c.companyName === companyFilter;
+    return matchKeyword && matchCompany;
+  });
+  renderContactTable(filtered);
 }
 
 function clearContactFilter() {
-  contactFilterCompany = null;
-  document.getElementById('contacts-subtitle').textContent = '全担当者一覧';
-  document.getElementById('contacts-clear-filter').style.display = 'none';
-  document.querySelectorAll('#contacts-tbody tr').forEach(r => r.style.display = '');
+  const searchInput = document.getElementById('contact-search-input');
+  const companyFilter = document.getElementById('contact-company-filter');
+  if (searchInput) searchInput.value = '';
+  if (companyFilter) companyFilter.value = '';
+
+  const subtitle = document.getElementById('contacts-subtitle');
+  const clearBtn = document.getElementById('contacts-clear-filter');
+  if (subtitle) subtitle.textContent = '全担当者一覧';
+  if (clearBtn) clearBtn.style.display = 'none';
+
+  applyContactFilter();
+}
+
+function goToContacts(companyName) {
+  navigate('contacts');
+  initContactFilter();
+
+  const subtitle = document.getElementById('contacts-subtitle');
+  const clearBtn = document.getElementById('contacts-clear-filter');
+  if (subtitle) subtitle.textContent = companyName + ' の担当者';
+  if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+  const companyFilter = document.getElementById('contact-company-filter');
+  if (companyFilter) companyFilter.value = companyName;
+  applyContactFilter();
+}
+
+// ===== 代理店管理：モックデータ =====
+let agenciesData = [
+  { id: 1, name: '株式会社アルファ商事', furigana: 'アルファショウジ', tel: '03-1234-5678', email: 'info@alpha.co.jp', address: '東京都新宿区西新宿1-1-1', linkedCompany: 'NTT東日本株式会社', linkedAxisIds: ['AX-0001', 'AX-0002'] },
+  { id: 2, name: '株式会社ベータネット', furigana: 'ベータネット', tel: '06-2345-6789', email: 'contact@beta-net.co.jp', address: '大阪府大阪市北区梅田2-2-2', linkedCompany: 'テスト工業株式会社', linkedAxisIds: ['AX-0003'] },
+  { id: 3, name: 'ガンマソリューションズ株式会社', furigana: 'ガンマソリューションズ', tel: '052-3456-7890', email: 'support@gamma-sol.co.jp', address: '愛知県名古屋市中村区名駅3-3-3', linkedCompany: 'オムロンSS株式会社', linkedAxisIds: ['AX-0005', 'AX-0009'] },
+];
+
+function renderAgencyTable(data) {
+  const tbody = document.querySelector('#agency-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  data.forEach(agency => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${agency.name}</td>
+      <td>${agency.furigana}</td>
+      <td>${agency.tel}</td>
+      <td><a href="mailto:${agency.email}" style="color:#2563eb;">${agency.email}</a></td>
+      <td>${agency.address}</td>
+      <td>${agency.linkedCompany || '—'}</td>
+      <td>${agency.linkedAxisIds && agency.linkedAxisIds.length > 0 ? agency.linkedAxisIds.join('、') : '—'}</td>
+      <td>
+        <button class="btn-edit" onclick="openAgencyEditModal(${agency.id})" style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">編集</button>
+        <button class="btn-delete" onclick="deleteAgency(${agency.id})" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;margin-left:4px;">削除</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function initAgencyCompanySelect() {
+  const select = document.getElementById('agency-linked-company');
+  if (!select) return;
+  select.innerHTML = '<option value="">選択してください</option>';
+  if (typeof companiesData !== 'undefined') {
+    companiesData.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      select.appendChild(opt);
+    });
+  }
+}
+
+function addAxisIdField() {
+  const container = document.getElementById('agency-axis-id-list');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  div.innerHTML = `
+    <input type="text" class="agency-axis-id-input" placeholder="例：AX-0001" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:200px;" />
+    <button type="button" onclick="this.parentElement.remove()" style="padding:6px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function openAgencyModal() {
+  document.getElementById('agency-modal-title').textContent = '代理店 新規登録';
+  document.getElementById('agency-edit-id').value = '';
+  document.getElementById('agency-name').value = '';
+  document.getElementById('agency-furigana').value = '';
+  document.getElementById('agency-tel').value = '';
+  document.getElementById('agency-email').value = '';
+  document.getElementById('agency-address').value = '';
+
+  initAgencyCompanySelect();
+  const companySelect = document.getElementById('agency-linked-company');
+  if (companySelect) companySelect.value = '';
+
+  const container = document.getElementById('agency-axis-id-list');
+  if (container) {
+    container.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" class="agency-axis-id-input" placeholder="例：AX-0001" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:200px;" />
+        <button type="button" onclick="addAxisIdField()" style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">＋追加</button>
+      </div>
+    `;
+  }
+  openModal('agency-modal');
+}
+
+function openAgencyEditModal(agencyId) {
+  const agency = agenciesData.find(a => a.id === agencyId);
+  if (!agency) return;
+
+  document.getElementById('agency-modal-title').textContent = '代理店 編集';
+  document.getElementById('agency-edit-id').value = agency.id;
+  document.getElementById('agency-name').value = agency.name || '';
+  document.getElementById('agency-furigana').value = agency.furigana || '';
+  document.getElementById('agency-tel').value = agency.tel || '';
+  document.getElementById('agency-email').value = agency.email || '';
+  document.getElementById('agency-address').value = agency.address || '';
+
+  initAgencyCompanySelect();
+  const companySelect = document.getElementById('agency-linked-company');
+  if (companySelect) companySelect.value = agency.linkedCompany || '';
+
+  const container = document.getElementById('agency-axis-id-list');
+  if (container) {
+    container.innerHTML = '';
+    const ids = agency.linkedAxisIds && agency.linkedAxisIds.length > 0 ? agency.linkedAxisIds : [''];
+    ids.forEach((axisId, index) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;gap:6px;align-items:center;';
+      div.innerHTML = `
+        <input type="text" class="agency-axis-id-input" value="${axisId}" placeholder="例：AX-0001" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:200px;" />
+        ${index === 0
+          ? `<button type="button" onclick="addAxisIdField()" style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">＋追加</button>`
+          : `<button type="button" onclick="this.parentElement.remove()" style="padding:6px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">✕</button>`
+        }
+      `;
+      container.appendChild(div);
+    });
+  }
+  openModal('agency-modal');
+}
+
+function saveAgency() {
+  const editId = document.getElementById('agency-edit-id').value;
+  const name = document.getElementById('agency-name').value.trim();
+  if (!name) { alert('代理店名を入力してください'); return; }
+  const furigana = document.getElementById('agency-furigana').value.trim();
+  const tel = document.getElementById('agency-tel').value.trim();
+  const email = document.getElementById('agency-email').value.trim();
+  const address = document.getElementById('agency-address').value.trim();
+  const linkedCompany = document.getElementById('agency-linked-company')?.value || '';
+  const linkedAxisIds = Array.from(document.querySelectorAll('.agency-axis-id-input')).map(input => input.value.trim()).filter(v => v !== '');
+
+  if (editId) {
+    const id = parseInt(editId, 10);
+    const index = agenciesData.findIndex(a => a.id === id);
+    if (index !== -1) agenciesData[index] = { id, name, furigana, tel, email, address, linkedCompany, linkedAxisIds };
+  } else {
+    const newId = agenciesData.length > 0 ? Math.max(...agenciesData.map(a => a.id)) + 1 : 1;
+    agenciesData.push({ id: newId, name, furigana, tel, email, address, linkedCompany, linkedAxisIds });
+  }
+  closeModal('agency-modal');
+  renderAgencyTable(agenciesData);
+}
+
+function deleteAgency(id) {
+  if (confirm('この代理店を削除してもよろしいですか？')) {
+    agenciesData = agenciesData.filter(a => a.id !== id);
+    renderAgencyTable(agenciesData);
+  }
 }
 
 // ===== 価格履歴（商品マスタ画面ボタン） =====
