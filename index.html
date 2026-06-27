@@ -1877,11 +1877,9 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
             </table>
           </div>
         </div>
-      </div>
-      </div>
-
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
-        <button class="btn btn-primary btn-disabled" id="step1-next" onclick="wizardNext()">企業/担当者情報をFIXして次へ <i class="ti ti-arrow-right"></i></button>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary btn-disabled" id="step1-next" onclick="wizardNext()">次へ進む <i class="ti ti-arrow-right"></i></button>
+        </div>
       </div>
     </div>
 
@@ -1979,7 +1977,7 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
 
     <!-- Step 3: 担当者登録 -->
     <div class="wizard-body" id="wizard-step-3">
-      <div class="section-title">担当者を確認・登録してください</div>
+      <div class="section-title">担当者を確認・登録してください（この案件に担当者を紐づける（複数担当者選択可））</div>
 
       <div class="contact-cards" id="contact-cards-container">
         <!-- カード1: 山田健太 (メイン) -->
@@ -2060,87 +2058,213 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
             <input type="date" class="form-control" id="delivery-pref-date" style="font-size:13px;padding:4px 8px;width:150px;">
           </div>
         </div>
+                <div style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;padding:12px;margin-bottom:14px;">
+          <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;">3. ご発注商品</div>
+          <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:6px;">絶縁監視装置「AZ100R」 【同梱品】乾電池 × 4個</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#4B5563;flex-wrap:wrap;gap:8px;line-height:1.4;">
+            <div>↓ AZ100R用ZCT(4ピン)付きは「標準セット」、お手持ちのオムロン製ZCT(3ピン)を繋げる方は「入れ換えセット」を選択</div>
+            <div>※電源ケーブルは付属しません。お客様でご用意ください。</div>
+          </div>
+        </div>
         <div class="table-wrap">
-          <table id="step4-product-table">
+          <table id="step4-product-table" style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
-              <tr><th>商品名</th><th>型番</th><th>数量</th><th>単価</th><th>小計</th><th>ソース</th></tr>
+              <tr style="background:#F9FAFB;border-bottom:2px solid #E5E7EB;text-align:left;">
+                <th style="padding:10px;width:38%;">商品名 / セット選択</th>
+                <th style="padding:10px;width:22%;">商品コード</th>
+                <th style="padding:10px;width:15%;">数量</th>
+                <th style="padding:10px;width:12%;">単価</th>
+                <th style="padding:10px;width:13%;">計（税別）</th>
+                <th style="padding:10px;width:6%;">ソース</th>
+              </tr>
             </thead>
             <tbody id="step4-product-tbody">
-              <tr class="step4-prd-row" style="background:#ffffff;color:#000000;">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:#000000;" value="絶縁監視装置 AZ100 標準セット" readonly></td>
-                <td class="cid-a" style="font-size:13px;">OSSAZ100A2_O_CP<br><span style="color:var(--text-muted);font-size:13px;">(基本: AZ100-BASE)</span></td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="1" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:#000000;" value="48700" readonly></td>
-                <td class="fw-700 prd-sub">¥48,700</td>
-                <td class="src-col"><span class="src-pdf">PDF</span></td>
+              <!-- AZ100R Main Sets -->
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#ffffff;color:#000000;">
+                <td style="padding:10px;">
+                  <div style="font-weight:700;font-size:14px;">標準セット</div>
+                  <div style="font-size:12px;color:#6B7280;margin-top:2px;">【セット品】ZCT(4pin) 4m AZ100R用 × 2個</div>
+                  <input type="hidden" class="prd-name" value="標準セット">
+                </td>
+                <td class="cid-a" style="padding:10px;font-weight:600;">OSSAZ100R_A_CP</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="1" min="0" oninput="updateStep4Products()">
+                    <span>台</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥48,700<input type="hidden" class="prd-price" value="48700"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥48,700</td>
+                <td style="padding:10px;" class="src-col"><span class="src-pdf">PDF</span></td>
               </tr>
-              <tr class="step4-prd-row" style="background:#ffffff;color:#000000;">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:#000000;" value="位相設定用ケーブル 4m" readonly></td>
-                <td class="cid-a" style="font-size:13px;">OSSVREFCBLA<br><span style="color:var(--text-muted);font-size:13px;">(基本: CBL-04)</span></td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="1" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:#000000;" value="13000" readonly></td>
-                <td class="fw-700 prd-sub">¥13,000</td>
-                <td class="src-col"><span class="src-pdf">PDF</span></td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div style="font-weight:700;font-size:14px;">入れ換えセット</div>
+                  <div style="font-size:12px;color:#6B7280;margin-top:2px;">【セット品】ZCT変換ケーブル × 2個</div>
+                  <input type="hidden" class="prd-name" value="入れ換えセット">
+                </td>
+                <td class="cid-a" style="padding:10px;font-weight:600;">OSSAZ100R_B_CP</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>台</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥45,700<input type="hidden" class="prd-price" value="45700"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
               </tr>
-              <tr class="step4-prd-row" style="background:#ffffff;color:#000000;">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:#000000;" value="電源ケーブル 1.5m" readonly></td>
-                <td class="cid-a" style="font-size:13px;">OSSPWRCBLC<br><span style="color:var(--text-muted);font-size:13px;">(基本: PWR-1.5)</span></td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="1" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:#000000;" value="1000" readonly></td>
-                <td class="fw-700 prd-sub">¥1,000</td>
-                <td class="src-col"><span class="src-pdf">PDF</span></td>
+
+              <!-- Ior Options Banner -->
+              <tr style="background:#EBF3DB;border-top:2px solid #3B6D11;border-bottom:1px solid #c8e0a1;">
+                <td colspan="6" style="padding:8px 10px;">
+                  <div style="font-weight:700;color:#284E09;font-size:13px;">Ior計測用オプション品</div>
+                  <div style="font-size:11px;color:#457B14;margin-top:2px;">↓↓ Ior計測には位相設定用ケーブルが必要です。1本で複数の絶縁監視装置の位相設定が行えます。 ↓↓</div>
+                </td>
               </tr>
-              <tr class="step4-prd-row" style="background:#F9F9F9;color:var(--text-muted);">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:var(--text-muted);" value="LTEモジュール拡張キット" readonly></td>
-                <td class="cid-a" style="font-size:13px;">OSSLTEEXT</td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="0" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:var(--text-muted);" value="25000" readonly></td>
-                <td class="fw-700 prd-sub">¥0</td>
-                <td class="src-col"><span class="text-muted">—</span></td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#ffffff;color:#000000;">
+                <td style="padding:10px;">
+                  <div style="font-weight:600;">位相設定用ケーブル 4m</div>
+                  <input type="hidden" class="prd-name" value="位相設定用ケーブル 4m">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSVREFCBLA</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="1" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥13,000<input type="hidden" class="prd-price" value="13000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥13,000</td>
+                <td style="padding:10px;" class="src-col"><span class="src-pdf">PDF</span></td>
               </tr>
-              <tr class="step4-prd-row" style="background:#F9F9F9;color:var(--text-muted);">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:var(--text-muted);" value="電流センサー 100A" readonly></td>
-                <td class="cid-a" style="font-size:13px;">OSSCUR100A</td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="0" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:var(--text-muted);" value="8000" readonly></td>
-                <td class="fw-700 prd-sub">¥0</td>
-                <td class="src-col"><span class="text-muted">—</span></td>
+
+              <!-- Other Options Banner -->
+              <tr style="background:#F3F4F6;border-top:1px solid #D1D5DB;border-bottom:1px solid #E5E7EB;">
+                <td colspan="6" style="padding:8px 10px;font-weight:700;font-size:13px;color:#374151;">その他のオプション品</td>
               </tr>
-              <tr class="step4-prd-row" style="background:#F9F9F9;color:var(--text-muted);">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:var(--text-muted);" value="電圧センサー 200V" readonly></td>
-                <td class="cid-a" style="font-size:13px;">OSSVOL200V</td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="0" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:var(--text-muted);" value="9500" readonly></td>
-                <td class="fw-700 prd-sub">¥0</td>
-                <td class="src-col"><span class="text-muted">—</span></td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>ZCT(4pin) 4m AZ100R用</div>
+                  <input type="hidden" class="prd-name" value="ZCT(4pin) 4m AZ100R用">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSZCT4PD</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>個</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥4,000<input type="hidden" class="prd-price" value="4000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
               </tr>
-              <tr class="step4-prd-row" style="background:#F9F9F9;color:var(--text-muted);">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:var(--text-muted);" value="LANケーブル Cat6" readonly></td>
-                <td class="cid-a" style="font-size:13px;">PRD-001</td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="0" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:var(--text-muted);" value="1200" readonly></td>
-                <td class="fw-700 prd-sub">¥0</td>
-                <td class="src-col"><span class="text-muted">—</span></td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>ZCT（４ピン）用延長ケーブル 4m</div>
+                  <input type="hidden" class="prd-name" value="ZCT（４ピン）用延長ケーブル 4m">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSZCTCBL4PA</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥2,000<input type="hidden" class="prd-price" value="2000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
               </tr>
-              <tr class="step4-prd-row" style="background:#F9F9F9;color:var(--text-muted);">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:var(--text-muted);" value="M2Mセット 1式" readonly></td>
-                <td class="cid-a" style="font-size:13px;">PRD-002</td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="0" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:var(--text-muted);" value="98000" readonly></td>
-                <td class="fw-700 prd-sub">¥0</td>
-                <td class="src-col"><span class="text-muted">—</span></td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>ZCT変換ケーブル <span style="font-size:11px;color:#9CA3AF;">※オムロン製ZCT(3ピン)を利用する時に使用</span></div>
+                  <input type="hidden" class="prd-name" value="ZCT変換ケーブル">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSZCTCV34A</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥1,300<input type="hidden" class="prd-price" value="1300"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
               </tr>
-              <tr class="step4-prd-row" style="background:#F9F9F9;color:var(--text-muted);">
-                <td><input type="text" class="form-control prd-name" style="font-size:13px;padding:4px;background:#F4F4F4;color:var(--text-muted);" value="固定ネジセット M3×10" readonly></td>
-                <td class="cid-a" style="font-size:13px;">PRD-099</td>
-                <td><input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;" value="0" min="0" oninput="updateStep4Products()"></td>
-                <td><input type="number" class="form-control prd-price" style="font-size:13px;padding:4px;width:80px;background:#F4F4F4;color:var(--text-muted);" value="3800" readonly></td>
-                <td class="fw-700 prd-sub">¥0</td>
-                <td class="src-col"><span class="text-muted">—</span></td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#ffffff;color:#000000;">
+                <td style="padding:10px;">
+                  <div style="font-weight:600;">電源ケーブル 1.5m 2p アース線付</div>
+                  <input type="hidden" class="prd-name" value="電源ケーブル 1.5m 2p アース線付">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSPWRCBLC</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="1" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥1,000<input type="hidden" class="prd-price" value="1000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥1,000</td>
+                <td style="padding:10px;" class="src-col"><span class="src-pdf">PDF</span></td>
               </tr>
-              <tr class="sum-row">
-                <td colspan="4">合計（税別）</td>
-                <td class="fw-700" id="step4-prd-total">¥62,700</td>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>電源ケーブル 3m 2p アース線なし</div>
+                  <input type="hidden" class="prd-name" value="電源ケーブル 3m 2p アース線なし">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSPWRCBLA</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥1,000<input type="hidden" class="prd-price" value="1000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>外部アンテナ 5m AZ100R用 <span style="font-size:11px;color:#9CA3AF;">※電波が弱い環境で使用</span></div>
+                  <input type="hidden" class="prd-name" value="外部アンテナ 5m AZ100R用">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSLTEANTB</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>個</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥10,000<input type="hidden" class="prd-price" value="10000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+
+              <!-- Shipping Row -->
+              <tr class="step4-prd-row" style="border-bottom:2px solid #374151;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>送料 <span style="font-size:11px;color:#9CA3AF;">※総額が1万円未満の場合</span></div>
+                  <input type="hidden" class="prd-name" value="送料">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSKCARR</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>式</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥500<input type="hidden" class="prd-price" value="500"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+
+              <!-- Footer Sum Row -->
+              <tr class="sum-row" style="background:#F3F4F6;">
+                <td colspan="4" style="text-align:right;padding:12px 10px;">
+                  <div style="font-weight:700;font-size:14px;color:#111827;">合計（税別）</div>
+                  <div style="font-size:11px;color:#6B7280;margin-top:2px;font-weight:normal;">総額1万円未満の場合は送料が発生します</div>
+                </td>
+                <td class="fw-700" id="step4-prd-total" style="font-size:16px;color:#111827;padding:12px 10px;">¥62,700</td>
                 <td></td>
               </tr>
             </tbody>
