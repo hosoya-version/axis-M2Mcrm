@@ -1653,17 +1653,8 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
           <th>操作</th>
         </tr>
       </thead>
-      <tbody>
-        <tr><td class="cid-a">PRD-001</td><td>LANケーブル Cat6</td><td>本</td><td><span class="tag tag-a">A機器</span></td><td>¥1,200</td><td>¥480</td><td><span class="badge badge-green">60%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('PRD-001')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-a">PRD-002</td><td>M2Mセット 1式</td><td>式</td><td><span class="tag tag-a">A機器</span></td><td>¥98,000</td><td>¥64,000</td><td><span class="badge badge-blue">35%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('PRD-002')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-a">PRD-003</td><td>絶縁監視装置 AZ100</td><td>台</td><td><span class="tag tag-a">A機器</span></td><td>¥48,700</td><td>¥31,600</td><td><span class="badge badge-blue">35%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('PRD-003')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-a">PRD-099</td><td>固定ネジセット M3×10</td><td>袋</td><td><span class="tag tag-a">A機器</span></td><td>¥3,800</td><td>¥1,500</td><td><span class="badge badge-green">61%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('PRD-099')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-b">SVC-001</td><td>配線工事（基本）</td><td>式</td><td><span class="tag tag-b">B工事</span></td><td>¥400,000</td><td>¥220,000</td><td><span class="badge badge-green">45%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('SVC-001')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-b">SVC-002</td><td>基礎工事</td><td>式</td><td><span class="tag tag-b">B工事</span></td><td>¥200,000</td><td>¥130,000</td><td><span class="badge badge-blue">35%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('SVC-002')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-c">SUB-001</td><td>スタンダードプラン</td><td>月</td><td><span class="tag tag-c">Cサブスク</span></td><td>¥48,000</td><td>¥15,000</td><td><span class="badge badge-green">69%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('SUB-001')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-c">SUB-002</td><td>プレミアムプラン</td><td>月</td><td><span class="tag tag-c">Cサブスク</span></td><td>¥120,000</td><td>¥38,000</td><td><span class="badge badge-green">68%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('SUB-002')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-        <tr><td class="cid-c">SUB-003</td><td>LTE絶縁監視サービス</td><td>月/台</td><td><span class="tag tag-c">Cサブスク</span></td><td>¥600</td><td>¥200</td><td><span class="badge badge-green">67%</span></td><td><button class="btn btn-sm btn-secondary" onclick="openPriceHistory('SUB-003')"><i class="ti ti-history"></i> 価格履歴</button></td></tr>
-      </tbody>
+      <tbody id="product-tbody"></tbody>
+
     </table>
   </div>
 </section>
@@ -1674,6 +1665,63 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     <button class="modal-close" onclick="closeModal('price-history-modal')"><i class="ti ti-x"></i></button>
     <div class="modal-title" id="price-history-title">価格履歴</div>
     <div id="price-history-body"></div>
+  </div>
+</div>
+
+<!-- 商品編集モーダル -->
+<div id="product-edit-modal"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin:0 0 20px;font-size:16px;">商品編集</h3>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">商品コード</label>
+      <input type="text" id="edit-product-code" readonly
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#f9fafb;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">商品名</label>
+      <input type="text" id="edit-product-name"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">標準売価（円）</label>
+      <input type="number" id="edit-product-price"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">標準原価（円）</label>
+      <input type="number" id="edit-product-cost"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">価格履歴</label>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">変更日</th>
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">標準売価</th>
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">標準原価</th>
+          </tr>
+        </thead>
+        <tbody id="product-price-history-body"></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeProductEditModal()"
+        style="padding:8px 20px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        キャンセル
+      </button>
+      <button onclick="saveProductEdit()"
+        style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+        保存
+      </button>
+    </div>
   </div>
 </div>
 
@@ -3562,6 +3610,19 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
  *   枝番A02: 同一申込書への追加発注時のみ発行
  */
 
+// ===== 商品マスタ：モックデータ =====
+let productsData = [
+  { id: 1, code: 'PRD-001', name: 'LANケーブル Cat6',     unit: '本',   category: 'A機器', categoryClass: 'a', price: 1200,   cost: 480,    priceHistory: [] },
+  { id: 2, code: 'PRD-002', name: 'M2Mセット 1式',         unit: '式',   category: 'A機器', categoryClass: 'a', price: 98000,  cost: 64000,  priceHistory: [] },
+  { id: 3, code: 'PRD-003', name: '絶縁監視装置 AZ100', unit: '台',   category: 'A機器', categoryClass: 'a', price: 48700,  cost: 31600,  priceHistory: [] },
+  { id: 4, code: 'PRD-099', name: '固定ネジセット M3×10', unit: '袋',   category: 'A機器', categoryClass: 'a', price: 3800,   cost: 1500,   priceHistory: [] },
+  { id: 5, code: 'SVC-001', name: '配線工事（基本）',  unit: '式',   category: 'B工事', categoryClass: 'b', price: 400000, cost: 220000, priceHistory: [] },
+  { id: 6, code: 'SVC-002', name: '基礎工事',           unit: '式',   category: 'B工事', categoryClass: 'b', price: 200000, cost: 130000, priceHistory: [] },
+  { id: 7, code: 'SUB-001', name: 'スタンダードプラン',   unit: '月',   category: 'Cサブスク', categoryClass: 'c', price: 48000,  cost: 15000,  priceHistory: [] },
+  { id: 8, code: 'SUB-002', name: 'プレミアムプラン',   unit: '月',   category: 'Cサブスク', categoryClass: 'c', price: 120000, cost: 38000,  priceHistory: [] },
+  { id: 9, code: 'SUB-003', name: 'LTE絶縁監視サービス', unit: '月/台', category: 'Cサブスク', categoryClass: 'c', price: 600,    cost: 200,    priceHistory: [] },
+];
+
 // ===== ダミーデータ定義 =====
 const priceHistoryData = {
   'PRD-001': [
@@ -3783,6 +3844,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactFilter();
   applyContactFilter();
   renderAgencyTable(agenciesData);
+  renderProductTable();
   initOrderFilter();
   applyOrderFilter();
 });
@@ -4605,6 +4667,109 @@ function openPriceHistory(code) {
       </table>
     </div>`;
   openModal('price-history-modal');
+}
+
+// ===== 商品マスタ：テーブル描画 =====
+function renderProductTable() {
+  const tbody = document.getElementById('product-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  productsData.forEach(p => {
+    const margin = p.price > 0 ? Math.round((1 - p.cost / p.price) * 100) : 0;
+    const marginBadge = margin >= 50 ? 'badge-green' : margin >= 35 ? 'badge-blue' : 'badge-yellow';
+    const catTag = `tag-${p.categoryClass}`;
+    const cidClass = `cid-${p.categoryClass}`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="${cidClass}">${p.code}</td>
+      <td>${p.name}</td>
+      <td>${p.unit}</td>
+      <td><span class="tag ${catTag}">${p.category}</span></td>
+      <td>¥${p.price.toLocaleString()}</td>
+      <td>¥${p.cost.toLocaleString()}</td>
+      <td><span class="badge ${marginBadge}">${margin}%</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-secondary" onclick="openPriceHistory('${p.code}')">
+          <i class="ti ti-history"></i> 価格履歴
+        </button>
+        <button class="btn-edit" onclick="openProductEditModal(${p.id})"
+          style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">
+          編集
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== 商品マスタ：編集モーダル =====
+let editingProductId = null;
+
+function openProductEditModal(productId) {
+  const product = productsData.find(p => p.id === productId);
+  if (!product) return;
+  editingProductId = productId;
+
+  document.getElementById('edit-product-code').value  = product.code  || '';
+  document.getElementById('edit-product-name').value  = product.name  || '';
+  document.getElementById('edit-product-price').value = product.price || '';
+  document.getElementById('edit-product-cost').value  = product.cost  || '';
+
+  // 価格履歴の表示（編集履歴 + priceHistoryDataの旧データをマージ）
+  const tbody = document.getElementById('product-price-history-body');
+  tbody.innerHTML = '';
+  const editHistory = product.priceHistory || [];
+  const staticHistory = (priceHistoryData[product.code] || []).map(h => ({
+    date: h.start, price: parseInt((h.sell || '0').replace(/[^0-9]/g, ''), 10),
+    cost: parseInt((h.cost || '0').replace(/[^0-9]/g, ''), 10)
+  }));
+  const allHistory = [...editHistory, ...staticHistory];
+
+  if (allHistory.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="padding:8px;text-align:center;color:#9ca3af;">履歴なし</td></tr>';
+  } else {
+    allHistory.forEach(h => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding:6px 10px;border:1px solid #e5e7eb;">${h.date}</td>
+        <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">¥${Number(h.price).toLocaleString()}</td>
+        <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">¥${Number(h.cost).toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('product-edit-modal').style.display = 'flex';
+}
+
+function closeProductEditModal() {
+  document.getElementById('product-edit-modal').style.display = 'none';
+  editingProductId = null;
+}
+
+function saveProductEdit() {
+  const product = productsData.find(p => p.id === editingProductId);
+  if (!product) return;
+
+  const newPrice = parseInt(document.getElementById('edit-product-price').value) || 0;
+  const newCost  = parseInt(document.getElementById('edit-product-cost').value)  || 0;
+
+  // 価格変更時は旧価格を履歴に追加
+  if (newPrice !== product.price || newCost !== product.cost) {
+    if (!product.priceHistory) product.priceHistory = [];
+    product.priceHistory.unshift({
+      date:  new Date().toLocaleDateString('ja-JP'),
+      price: product.price,
+      cost:  product.cost
+    });
+  }
+
+  product.name  = document.getElementById('edit-product-name').value;
+  product.price = newPrice;
+  product.cost  = newCost;
+
+  closeProductEditModal();
+  renderProductTable();
 }
 
 // ===== 売価・原価マスタ =====
