@@ -1434,10 +1434,9 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
 <section class="page" id="page-companies">
   <div class="page-header">
     <div>
-      <div class="page-title">企業・拠点管理</div>
-      <div class="page-subtitle">取引先企業・拠点データベース</div>
+      <div class="page-title">企業管理</div>
+      <div class="page-subtitle">取引先企業データベース</div>
     </div>
-    <button class="btn btn-primary"><i class="ti ti-plus"></i> 新規登録</button>
   </div>
 
   <div class="search-bar" style="margin-bottom: 16px;">
@@ -1479,7 +1478,6 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <button class="btn btn-sm btn-secondary" id="contacts-clear-filter" style="display:none;" onclick="clearContactFilter()"><i class="ti ti-x"></i> フィルター解除</button>
-      <button class="btn btn-primary"><i class="ti ti-plus"></i> 新規登録</button>
     </div>
   </div>
 
@@ -1488,15 +1486,10 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     <input
       type="text"
       id="contact-search-input"
-      placeholder="氏名・フリガナ・企業名で検索..."
+      placeholder="氏名・フリガナ・企業名・電話番号・E-mailで検索..."
       oninput="applyContactFilter()"
-      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:260px;"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:320px;"
     />
-    <!-- 企業名フィルター -->
-    <select id="contact-company-filter" onchange="applyContactFilter()"
-      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
-      <option value="">企業名（すべて）</option>
-    </select>
     <!-- クリアボタン -->
     <button onclick="clearContactFilter()"
       style="padding:6px 12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
@@ -1581,12 +1574,33 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
       <input type="text" class="form-control" id="agency-address" placeholder="東京都新宿区西新宿1-1-1">
     </div>
 
-    <!-- 紐づく企業 -->
+    <!-- 紐づく企業（複数対応） -->
     <div class="form-group">
       <label class="form-label">紐づく企業</label>
-      <select class="form-control" id="agency-linked-company" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
-        <option value="">選択してください</option>
-      </select>
+      <div id="agency-company-list" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <div style="position:relative;flex:1;">
+            <input
+              type="text"
+              class="agency-company-input"
+              placeholder="企業名またはフリガナで検索..."
+              oninput="searchAgencyCompany(this)"
+              autocomplete="off"
+              style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;"
+            />
+            <ul class="agency-company-suggestions"
+              style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:180px;overflow-y:auto;z-index:1000;margin:0;padding:0;list-style:none;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+            </ul>
+          </div>
+          <button type="button" onclick="addAgencyCompanyField()"
+            style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+            ＋追加
+          </button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin-top:4px;">
+        複数登録する場合は「＋追加」ボタンで入力欄を増やしてください。
+      </p>
     </div>
 
     <!-- 紐づくアクシスID（複数入力可） -->
@@ -4232,34 +4246,27 @@ function clearOrderFilter() {
 
 let contactFilterInitialized = false;
 function initContactFilter() {
-  const select = document.getElementById('contact-company-filter');
-  if (!select || contactFilterInitialized) return;
-  const companies = [...new Set(contactsData.map(c => c.companyName))];
-  companies.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    select.appendChild(opt);
-  });
+  if (contactFilterInitialized) return;
   contactFilterInitialized = true;
 }
 
 function applyContactFilter() {
   const keyword = document.getElementById('contact-search-input')?.value || '';
-  const companyFilter = document.getElementById('contact-company-filter')?.value || '';
   const filtered = contactsData.filter(c => {
-    const matchKeyword = c.name.includes(keyword) || c.furigana.includes(keyword) || c.companyName.includes(keyword);
-    const matchCompany = companyFilter === '' || c.companyName === companyFilter;
-    return matchKeyword && matchCompany;
+    const matchKeyword =
+      c.name.includes(keyword) ||
+      c.furigana.includes(keyword) ||
+      c.companyName.includes(keyword) ||
+      c.tel.includes(keyword) ||
+      c.email.includes(keyword);
+    return matchKeyword;
   });
   renderContactTable(filtered);
 }
 
 function clearContactFilter() {
   const searchInput = document.getElementById('contact-search-input');
-  const companyFilter = document.getElementById('contact-company-filter');
   if (searchInput) searchInput.value = '';
-  if (companyFilter) companyFilter.value = '';
 
   const subtitle = document.getElementById('contacts-subtitle');
   const clearBtn = document.getElementById('contacts-clear-filter');
@@ -4278,16 +4285,43 @@ function goToContacts(companyName) {
   if (subtitle) subtitle.textContent = companyName + ' の担当者';
   if (clearBtn) clearBtn.style.display = 'inline-flex';
 
-  const companyFilter = document.getElementById('contact-company-filter');
-  if (companyFilter) companyFilter.value = companyName;
+  const searchInput = document.getElementById('contact-search-input');
+  if (searchInput) searchInput.value = companyName;
   applyContactFilter();
 }
 
 // ===== 代理店管理：モックデータ =====
 let agenciesData = [
-  { id: 1, name: '株式会社アルファ商事', furigana: 'アルファショウジ', tel: '03-1234-5678', email: 'info@alpha.co.jp', address: '東京都新宿区西新宿1-1-1', linkedCompany: 'NTT東日本株式会社', linkedAxisIds: ['AX-0001', 'AX-0002'] },
-  { id: 2, name: '株式会社ベータネット', furigana: 'ベータネット', tel: '06-2345-6789', email: 'contact@beta-net.co.jp', address: '大阪府大阪市北区梅田2-2-2', linkedCompany: 'テスト工業株式会社', linkedAxisIds: ['AX-0003'] },
-  { id: 3, name: 'ガンマソリューションズ株式会社', furigana: 'ガンマソリューションズ', tel: '052-3456-7890', email: 'support@gamma-sol.co.jp', address: '愛知県名古屋市中村区名駅3-3-3', linkedCompany: 'オムロンSS株式会社', linkedAxisIds: ['AX-0005', 'AX-0009'] },
+  {
+    id: 1,
+    name: '株式会社アルファ商事',
+    furigana: 'アルファショウジ',
+    tel: '03-1234-5678',
+    email: 'info@alpha.co.jp',
+    address: '東京都新宿区西新宿1-1-1',
+    linkedCompanies: ['NTT東日本株式会社', 'テスト工業株式会社'],
+    linkedAxisIds: ['AX-0001', 'AX-0002'],
+  },
+  {
+    id: 2,
+    name: '株式会社ベータネット',
+    furigana: 'ベータネット',
+    tel: '06-2345-6789',
+    email: 'contact@beta-net.co.jp',
+    address: '大阪府大阪市北区梅田2-2-2',
+    linkedCompanies: ['テスト工業株式会社'],
+    linkedAxisIds: ['AX-0003'],
+  },
+  {
+    id: 3,
+    name: 'ガンマソリューションズ株式会社',
+    furigana: 'ガンマソリューションズ',
+    tel: '052-3456-7890',
+    email: 'support@gamma-sol.co.jp',
+    address: '愛知県名古屋市中村区名駅3-3-3',
+    linkedCompanies: ['オムロンSS株式会社', 'サブスク商事株式会社'],
+    linkedAxisIds: ['AX-0005', 'AX-0009'],
+  },
 ];
 
 function renderAgencyTable(data) {
@@ -4302,7 +4336,9 @@ function renderAgencyTable(data) {
       <td>${agency.tel}</td>
       <td><a href="mailto:${agency.email}" style="color:#2563eb;">${agency.email}</a></td>
       <td>${agency.address}</td>
-      <td>${agency.linkedCompany || '—'}</td>
+      <td>${agency.linkedCompanies && agency.linkedCompanies.length > 0
+            ? agency.linkedCompanies.join('、')
+            : '—'}</td>
       <td>${agency.linkedAxisIds && agency.linkedAxisIds.length > 0 ? agency.linkedAxisIds.join('、') : '—'}</td>
       <td>
         <button class="btn-edit" onclick="openAgencyEditModal(${agency.id})" style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">編集</button>
@@ -4313,19 +4349,77 @@ function renderAgencyTable(data) {
   });
 }
 
-function initAgencyCompanySelect() {
-  const select = document.getElementById('agency-linked-company');
-  if (!select) return;
-  select.innerHTML = '<option value="">選択してください</option>';
-  if (typeof companiesData !== 'undefined') {
-    companiesData.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.name;
-      opt.textContent = c.name;
-      select.appendChild(opt);
-    });
+// ===== 代理店管理：企業検索（インクリメンタルサーチ） =====
+function searchAgencyCompany(inputEl) {
+  const keyword = inputEl.value || '';
+  const suggestions = inputEl.nextElementSibling;
+  if (!suggestions) return;
+
+  if (keyword.trim() === '') {
+    suggestions.style.display = 'none';
+    return;
   }
+
+  const matched = companiesData.filter(c =>
+    c.name.includes(keyword) || c.furigana.includes(keyword)
+  );
+
+  suggestions.innerHTML = '';
+  if (matched.length === 0) {
+    suggestions.style.display = 'none';
+    return;
+  }
+
+  matched.forEach(c => {
+    const li = document.createElement('li');
+    li.textContent = `${c.name}（${c.furigana}）`;
+    li.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;';
+    li.onmouseover = () => li.style.background = '#f0f4ff';
+    li.onmouseout = () => li.style.background = '#fff';
+    li.onclick = () => {
+      inputEl.value = c.name;
+      inputEl.dataset.value = c.name;
+      suggestions.style.display = 'none';
+    };
+    suggestions.appendChild(li);
+  });
+  suggestions.style.display = 'block';
 }
+
+function addAgencyCompanyField() {
+  const container = document.getElementById('agency-company-list');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:6px;align-items:flex-start;';
+  div.innerHTML = `
+    <div style="position:relative;flex:1;">
+      <input
+        type="text"
+        class="agency-company-input"
+        placeholder="企業名またはフリガナで検索..."
+        oninput="searchAgencyCompany(this)"
+        autocomplete="off"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;"
+      />
+      <ul class="agency-company-suggestions"
+        style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:180px;overflow-y:auto;z-index:1000;margin:0;padding:0;list-style:none;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+      </ul>
+    </div>
+    <button type="button" onclick="this.closest('div').parentElement.remove()"
+      style="padding:6px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+      ✕
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('.agency-company-suggestions').forEach(list => {
+    if (!list.previousElementSibling?.contains(e.target) && !list.contains(e.target)) {
+      list.style.display = 'none';
+    }
+  });
+});
 
 function addAxisIdField() {
   const container = document.getElementById('agency-axis-id-list');
@@ -4348,9 +4442,31 @@ function openAgencyModal() {
   document.getElementById('agency-email').value = '';
   document.getElementById('agency-address').value = '';
 
-  initAgencyCompanySelect();
-  const companySelect = document.getElementById('agency-linked-company');
-  if (companySelect) companySelect.value = '';
+  // 企業入力欄をリセット
+  const companyContainer = document.getElementById('agency-company-list');
+  if (companyContainer) {
+    companyContainer.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:flex-start;">
+        <div style="position:relative;flex:1;">
+          <input
+            type="text"
+            class="agency-company-input"
+            placeholder="企業名またはフリガナで検索..."
+            oninput="searchAgencyCompany(this)"
+            autocomplete="off"
+            style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;"
+          />
+          <ul class="agency-company-suggestions"
+            style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:180px;overflow-y:auto;z-index:1000;margin:0;padding:0;list-style:none;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+          </ul>
+        </div>
+        <button type="button" onclick="addAgencyCompanyField()"
+          style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+          ＋追加
+        </button>
+      </div>
+    `;
+  }
 
   const container = document.getElementById('agency-axis-id-list');
   if (container) {
@@ -4376,9 +4492,41 @@ function openAgencyEditModal(agencyId) {
   document.getElementById('agency-email').value = agency.email || '';
   document.getElementById('agency-address').value = agency.address || '';
 
-  initAgencyCompanySelect();
-  const companySelect = document.getElementById('agency-linked-company');
-  if (companySelect) companySelect.value = agency.linkedCompany || '';
+  // 企業入力欄をリセットして既存データを再生成
+  const companyContainer = document.getElementById('agency-company-list');
+  if (companyContainer) {
+    companyContainer.innerHTML = '';
+    const companies = agency.linkedCompanies && agency.linkedCompanies.length > 0
+      ? agency.linkedCompanies
+      : [''];
+    companies.forEach((companyName, index) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;gap:6px;align-items:flex-start;';
+      div.innerHTML = `
+        <div style="position:relative;flex:1;">
+          <input
+            type="text"
+            class="agency-company-input"
+            value="${companyName}"
+            placeholder="企業名またはフリガナで検索..."
+            oninput="searchAgencyCompany(this)"
+            autocomplete="off"
+            style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;"
+          />
+          <ul class="agency-company-suggestions"
+            style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:180px;overflow-y:auto;z-index:1000;margin:0;padding:0;list-style:none;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+          </ul>
+        </div>
+        ${index === 0
+          ? `<button type="button" onclick="addAgencyCompanyField()"
+               style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">＋追加</button>`
+          : `<button type="button" onclick="this.closest('div').parentElement.remove()"
+               style="padding:6px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">✕</button>`
+        }
+      `;
+      companyContainer.appendChild(div);
+    });
+  }
 
   const container = document.getElementById('agency-axis-id-list');
   if (container) {
@@ -4408,16 +4556,19 @@ function saveAgency() {
   const tel = document.getElementById('agency-tel').value.trim();
   const email = document.getElementById('agency-email').value.trim();
   const address = document.getElementById('agency-address').value.trim();
-  const linkedCompany = document.getElementById('agency-linked-company')?.value || '';
+  // 複数企業名を配列で取得
+  const linkedCompanies = Array.from(
+    document.querySelectorAll('.agency-company-input')
+  ).map(input => input.value.trim()).filter(v => v !== '');
   const linkedAxisIds = Array.from(document.querySelectorAll('.agency-axis-id-input')).map(input => input.value.trim()).filter(v => v !== '');
 
   if (editId) {
     const id = parseInt(editId, 10);
     const index = agenciesData.findIndex(a => a.id === id);
-    if (index !== -1) agenciesData[index] = { id, name, furigana, tel, email, address, linkedCompany, linkedAxisIds };
+    if (index !== -1) agenciesData[index] = { id, name, furigana, tel, email, address, linkedCompanies, linkedAxisIds };
   } else {
     const newId = agenciesData.length > 0 ? Math.max(...agenciesData.map(a => a.id)) + 1 : 1;
-    agenciesData.push({ id: newId, name, furigana, tel, email, address, linkedCompany, linkedAxisIds });
+    agenciesData.push({ id: newId, name, furigana, tel, email, address, linkedCompanies, linkedAxisIds });
   }
   closeModal('agency-modal');
   renderAgencyTable(agenciesData);
