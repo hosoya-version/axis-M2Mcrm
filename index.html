@@ -2570,18 +2570,6 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
               <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">クレジットりそなID</td>
               <td style="padding:8px 0;"><input type="text" class="form-control" style="width:160px;" placeholder="例：215421" value="215421"></td>
             </tr>
-            <tr>
-              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">オムロンID</td>
-              <td style="padding:8px 0;"><input type="text" class="form-control" style="width:160px;"></td>
-            </tr>
-            <tr>
-              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">オムロンサービスID</td>
-              <td style="padding:8px 0;"><input type="text" class="form-control" style="width:160px;"></td>
-            </tr>
-            <tr>
-              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">オムロンサービスパスワード</td>
-              <td style="padding:8px 0;"><input type="text" class="form-control" style="width:160px;"></td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -2744,51 +2732,12 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
           <th>原価合計</th>
           <th>粗利</th>
           <th>ステータス</th>
+          <th>納品日</th>
+          <th>請求状況</th>
           <th>操作</th>
         </tr>
       </thead>
-      <tbody>
-        <tr>
-          <td><span class="cid-a">20260614002A01</span></td>
-          <td>オムロンSS</td>
-          <td>3品</td>
-          <td>¥62,700</td>
-          <td>¥40,800</td>
-          <td>¥21,900</td>
-          <td><span class="badge badge-yellow">処理中</span></td>
-          <td><button class="btn btn-sm btn-secondary" onclick="openSalesADetail('20260614002A01')"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr>
-          <td><span class="cid-a">20260614001A01</span></td>
-          <td>NTT東日本</td>
-          <td>2品</td>
-          <td>¥98,000</td>
-          <td>¥39,000</td>
-          <td>¥59,000</td>
-          <td><span class="badge badge-yellow">処理中</span></td>
-          <td><button class="btn btn-sm btn-secondary" onclick="openSalesADetail('20260614001A01')"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr>
-          <td><span class="cid-a">20260610001A01</span></td>
-          <td>テスト工業</td>
-          <td>3品</td>
-          <td>¥730,000</td>
-          <td>¥420,000</td>
-          <td>¥310,000</td>
-          <td><span class="badge badge-green">納品済</span></td>
-          <td><button class="btn btn-sm btn-secondary" onclick="openSalesADetail('20260610001A01')"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr>
-          <td><span class="cid-a">20260610001A02</span></td>
-          <td>テスト工業</td>
-          <td>1品（追加発注）</td>
-          <td>¥240,000</td>
-          <td>¥96,000</td>
-          <td>¥144,000</td>
-          <td><span class="badge badge-green">納品済</span></td>
-          <td><button class="btn btn-sm btn-secondary" onclick="openSalesADetail('20260610001A02')"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-      </tbody>
+      <tbody id="sales-a-tbody"></tbody>
     </table>
   </div>
 </section>
@@ -2799,6 +2748,63 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
     <button class="modal-close" onclick="closeModal('sales-a-modal')"><i class="ti ti-x"></i></button>
     <div class="modal-title" id="sales-a-modal-title">機器販売詳細</div>
     <div id="sales-a-modal-body"></div>
+  </div>
+</div>
+
+<!-- Aシリーズ ステータス設定モーダル -->
+<div id="sales-a-status-modal"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:400px;max-width:90vw;">
+    <h3 style="margin:0 0 20px;font-size:16px;">ステータス設定</h3>
+
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">処理ステータス</label>
+      <div style="display:flex;gap:10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-status" value="処理中" />
+          処理中
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-status" value="納品済" />
+          納品済
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">納品日</label>
+      <input type="date" id="sales-a-delivery-date"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">請求状況</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-billing" value="未請求" />
+          未請求
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-billing" value="請求済" />
+          請求済
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-billing" value="入金済" />
+          入金済
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeSalesAStatusModal()"
+        style="padding:8px 20px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        キャンセル
+      </button>
+      <button onclick="saveSalesAStatus()"
+        style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+        保存
+      </button>
+    </div>
   </div>
 </div>
 
@@ -3757,41 +3763,50 @@ const priceHistoryData = {
   ]
 };
 
-const salesAData = {
-  '20260614002A01': {
-    company: 'オムロンSS', status: '処理中',
+let salesAData = [
+  {
+    id: 1, axisId: '20260614002A01', company: 'オムロンSS', status: '処理中',
     items: [
-      { name: '絶縁監視装置 AZ100 標準セット', code: 'OSSAZ100A2_O_CP', qty: '1台', unit: 48700, sub: 48700 },
-      { name: '位相設定用ケーブル 4m', code: 'OSSVREFCBLA', qty: '1本', unit: 13000, sub: 13000 },
-      { name: '電源ケーブル 1.5m', code: 'OSSPWRCBLC', qty: '1本', unit: 1000, sub: 1000 }
+      { name: '絶縁監視装置 AZ100 標準セット', code: 'OSSAZ100A2_O_CP', qty: '1台', unit: 48700, sub: 48700, cost: 31000 },
+      { name: '位相設定用ケーブル 4m', code: 'OSSVREFCBLA', qty: '1本', unit: 13000, sub: 13000, cost: 9000 },
+      { name: '電源ケーブル 1.5m', code: 'OSSPWRCBLC', qty: '1本', unit: 1000, sub: 1000, cost: 800 }
     ],
-    delivery: '未設定', invoice: '未請求'
+    deliveryDate: null, delivery: '未設定', billingStatus: '未請求', invoice: '未請求', attachments: []
   },
-  '20260614001A01': {
-    company: 'NTT東日本', status: '処理中',
+  {
+    id: 2, axisId: '20260614001A01', company: 'NTT東日本', status: '処理中',
     items: [
-      { name: 'M2Mセット 1式', code: 'PRD-002', qty: '1式', unit: 98000, sub: 98000 },
-      { name: 'LANケーブル Cat6', code: 'PRD-001', qty: '0本', unit: 0, sub: 0 }
+      { name: 'M2Mセット 1式', code: 'PRD-002', qty: '1式', unit: 98000, sub: 98000, cost: 39000 },
+      { name: 'LANケーブル Cat6', code: 'PRD-001', qty: '0本', unit: 0, sub: 0, cost: 0 }
     ],
-    delivery: '未設定', invoice: '未請求'
+    deliveryDate: null, delivery: '未設定', billingStatus: '未請求', invoice: '未請求', attachments: []
   },
-  '20260610001A01': {
-    company: 'テスト工業', status: '納品済',
+  {
+    id: 3, axisId: '20260610001A01', company: 'テスト工業', status: '納品済',
     items: [
-      { name: '絶縁監視装置 AZ100', code: 'PRD-003', qty: '3台', unit: 48700, sub: 146100 },
-      { name: 'M2Mセット 1式', code: 'PRD-002', qty: '1式', unit: 98000, sub: 98000 },
-      { name: '配線工事（追加品）', code: 'SVC-001x', qty: '1式', unit: 485900, sub: 485900 }
+      { name: '絶縁監視装置 AZ100', code: 'PRD-003', qty: '3台', unit: 48700, sub: 146100, cost: 93000 },
+      { name: 'M2Mセット 1式', code: 'PRD-002', qty: '1式', unit: 98000, sub: 98000, cost: 39000 },
+      { name: '配線工事（追加品）', code: 'SVC-001x', qty: '1式', unit: 485900, sub: 485900, cost: 288000 }
     ],
-    delivery: '2026/06/10', invoice: '¥730,000 請求済'
+    deliveryDate: '2026-06-10', delivery: '2026/06/10', billingStatus: '入金済', invoice: '¥730,000 請求済',
+    attachments: [
+      { name: '納品書_20260610.pdf', size: '245 KB', uploadedAt: '2026-06-10 14:22', uploader: '管理者 太郎' }
+    ]
   },
-  '20260610001A02': {
-    company: 'テスト工業', status: '納品済',
+  {
+    id: 4, axisId: '20260610001A02', company: 'テスト工業', status: '納品済',
     items: [
-      { name: '固定ネジセット M3×10（追加）', code: 'PRD-099', qty: '64袋', unit: 3800, sub: 243200 }
+      { name: '固定ネジセット M3×10（追加）', code: 'PRD-099', qty: '64袋', unit: 3800, sub: 240000, cost: 96000 }
     ],
-    delivery: '2026/06/12', invoice: '¥240,000 請求済'
+    deliveryDate: '2026-06-12', delivery: '2026/06/12', billingStatus: '請求済', invoice: '¥240,000 請求済', attachments: []
   }
-};
+];
+
+const salesADataByKey = {};
+function buildSalesADataByKey() {
+  salesAData.forEach(d => { salesADataByKey[d.axisId] = d; });
+}
+buildSalesADataByKey();
 
 const salesBData = {
   '20260614001B01': {
@@ -3949,6 +3964,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAgencyTable(agenciesData);
   renderProductTable();
   renderTempProductTable();
+  buildSalesADataByKey();
+  renderSalesATable();
   initOrderFilter();
   applyOrderFilter();
 });
@@ -5434,27 +5451,132 @@ function toggleAccordion(key) {
   });
 }
 
-// ===== 機器販売詳細 =====
-function openSalesADetail(id) {
-  const d = salesAData[id];
-  if (!d) return;
+// ===== 機器販売（A）：テーブル描画 =====
+function renderSalesATable() {
+  const tbody = document.getElementById('sales-a-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  salesAData.forEach(item => {
+    const total   = item.items.reduce((s, i) => s + i.sub, 0);
+    const cost    = item.items.reduce((s, i) => s + (i.unit * (parseInt(i.qty) || 0) - i.sub + i.sub), 0);
+    const profit  = total - (item.items.reduce((s, i) => s + (i.cost || 0), 0));
+    const itemQty = item.items.length + '品';
 
-  const total = d.items.reduce((s, i) => s + i.sub, 0);
-  const rows = d.items.map(i => `
+    const statusBadge = item.status === '納品済'
+      ? `<span style="padding:3px 10px;background:#dcfce7;color:#16a34a;border-radius:20px;font-size:12px;font-weight:600;">納品済</span>`
+      : `<span style="padding:3px 10px;background:#fef9c3;color:#b45309;border-radius:20px;font-size:12px;font-weight:600;">処理中</span>`;
+
+    const billingColor = {
+      '未請求': { bg:'#f3f4f6', color:'#6b7280' },
+      '請求済': { bg:'#dbeafe', color:'#1d4ed8' },
+      '入金済': { bg:'#dcfce7', color:'#16a34a' }
+    }[item.billingStatus] || { bg:'#f3f4f6', color:'#6b7280' };
+    const billingBadge = `<span style="padding:3px 10px;background:${billingColor.bg};color:${billingColor.color};border-radius:20px;font-size:12px;font-weight:600;">${item.billingStatus}</span>`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="cid-a">${item.axisId}</span></td>
+      <td>${item.company}</td>
+      <td>${itemQty}</td>
+      <td>¥${total.toLocaleString()}</td>
+      <td>¥${item.items.reduce((s,i) => s+(i.cost||0),0).toLocaleString()}</td>
+      <td>¥${(total - item.items.reduce((s,i) => s+(i.cost||0),0)).toLocaleString()}</td>
+      <td style="text-align:center;">${statusBadge}</td>
+      <td style="text-align:center;">${item.deliveryDate || '—'}</td>
+      <td style="text-align:center;">${billingBadge}</td>
+      <td style="display:flex;gap:4px;">
+        <button class="btn-edit" onclick="openSalesAStatusModal(${item.id})"
+          style="padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">
+          設定
+        </button>
+        <button class="btn-detail" onclick="openSalesADetailModal(${item.id})"
+          style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">
+          詳細
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== 機器販売（A）：ステータス設定 =====
+let editingSalesAId = null;
+
+function openSalesAStatusModal(itemId) {
+  const item = salesAData.find(d => d.id === itemId);
+  if (!item) return;
+  editingSalesAId = itemId;
+
+  document.querySelectorAll('input[name="sales-a-status"]').forEach(r => {
+    r.checked = r.value === item.status;
+  });
+  document.querySelectorAll('input[name="sales-a-billing"]').forEach(r => {
+    r.checked = r.value === item.billingStatus;
+  });
+  document.getElementById('sales-a-delivery-date').value = item.deliveryDate || '';
+
+  document.getElementById('sales-a-status-modal').style.display = 'flex';
+}
+
+function closeSalesAStatusModal() {
+  document.getElementById('sales-a-status-modal').style.display = 'none';
+  editingSalesAId = null;
+}
+
+function saveSalesAStatus() {
+  const item = salesAData.find(d => d.id === editingSalesAId);
+  if (!item) return;
+
+  const status       = document.querySelector('input[name="sales-a-status"]:checked')?.value  || '処理中';
+  const billing      = document.querySelector('input[name="sales-a-billing"]:checked')?.value || '未請求';
+  const deliveryDate = document.getElementById('sales-a-delivery-date').value;
+
+  item.status        = status;
+  item.billingStatus = billing;
+  item.deliveryDate  = deliveryDate || null;
+
+  // salesADataByKey も同期
+  if (salesADataByKey[item.axisId]) {
+    salesADataByKey[item.axisId].status   = status;
+    salesADataByKey[item.axisId].delivery = deliveryDate || '未設定';
+    salesADataByKey[item.axisId].invoice  = billing;
+  }
+
+  closeSalesAStatusModal();
+  renderSalesATable();
+}
+
+// ===== 機器販売（A）：詳細モーダル（添付エリア付き） =====
+let currentSalesADetailId = null;
+
+function openSalesADetailModal(itemId) {
+  currentSalesADetailId = itemId;
+  const item = salesAData.find(d => d.id === itemId);
+  if (!item) return;
+  if (!item.attachments) item.attachments = [];
+
+  const total = item.items.reduce((s, i) => s + i.sub, 0);
+  const rows  = item.items.map(i => `
     <tr>
       <td>${i.name}</td>
-      <td class="cid-a" style="font-size: 13px;">${i.code}</td>
+      <td class="cid-a" style="font-size:13px;">${i.code}</td>
       <td>${i.qty}</td>
       <td>¥${i.unit.toLocaleString()}</td>
       <td class="fw-700">¥${i.sub.toLocaleString()}</td>
     </tr>`).join('');
 
-  document.getElementById('sales-a-modal-title').textContent = `機器販売詳細 — ${id}`;
+  const billingColor = {
+    '未請求': '#6b7280', '請求済': '#1d4ed8', '入金済': '#16a34a'
+  }[item.billingStatus] || '#6b7280';
+
+  document.getElementById('sales-a-modal-title').textContent = `機器販売詳細 — ${item.axisId}`;
   document.getElementById('sales-a-modal-body').innerHTML = `
     <div style="margin-bottom:12px;">
-      <span style="color:var(--text-muted);font-size: 13px;">企業名：</span><strong>${d.company}</strong>
-      <span style="margin-left:16px;color:var(--text-muted);font-size: 13px;">ステータス：</span>
-      <span class="badge ${d.status === '納品済' ? 'badge-green' : 'badge-yellow'}">${d.status}</span>
+      <span style="color:var(--text-muted);font-size:13px;">企業名：</span><strong>${item.company}</strong>
+      <span style="margin-left:16px;color:var(--text-muted);font-size:13px;">ステータス：</span>
+      <span class="badge ${item.status === '納品済' ? 'badge-green' : 'badge-yellow'}">${item.status}</span>
+      <span style="margin-left:12px;color:var(--text-muted);font-size:13px;">請求状況：</span>
+      <span style="font-weight:600;color:${billingColor};">${item.billingStatus}</span>
     </div>
     <div class="table-wrap" style="margin-bottom:14px;">
       <table>
@@ -5465,12 +5587,101 @@ function openSalesADetail(id) {
         </tbody>
       </table>
     </div>
-    <div style="display:flex;gap:16px;font-size: 13px;">
-      <div><span style="color:var(--text-muted);">納品日：</span><strong>${d.delivery}</strong></div>
-      <div><span style="color:var(--text-muted);">請求：</span><strong>${d.invoice}</strong></div>
-    </div>`;
+    <div style="display:flex;gap:16px;font-size:13px;margin-bottom:4px;">
+      <div><span style="color:var(--text-muted);">納品日：</span><strong>${item.deliveryDate || '未設定'}</strong></div>
+    </div>
+
+    <!-- 添付ファイルエリア -->
+    <div style="margin-top:24px;border-top:1px solid #e5e7eb;padding-top:20px;">
+      <h4 style="margin:0 0 12px;font-size:14px;font-weight:600;">📎 添付ファイル（見積書・請求書）</h4>
+      <div id="sales-a-drop-zone"
+        ondragover="event.preventDefault();this.style.background='#eff6ff';"
+        ondragleave="this.style.background='#f9fafb';"
+        ondrop="handleSalesAFileDrop(event)"
+        style="border:2px dashed #93c5fd;border-radius:8px;padding:32px;text-align:center;background:#f9fafb;cursor:pointer;transition:background 0.2s;">
+        <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">ここにファイルをドラッグ＆ドロップ</p>
+        <p style="margin:0 0 12px;font-size:12px;color:#9ca3af;">PDF・Excel・Word・画像 対応</p>
+        <label style="padding:8px 16px;background:#2563eb;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+          ファイルを選択
+          <input type="file" id="sales-a-file-input" multiple
+            accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg"
+            style="display:none;" onchange="handleSalesAFileSelect(event)" />
+        </label>
+      </div>
+      <div style="margin-top:16px;">
+        <h5 style="margin:0 0 8px;font-size:13px;font-weight:600;color:#374151;">添付履歴</h5>
+        <div id="sales-a-attachment-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  `;
+
+  // 添付履歴を描画
+  renderSalesAAttachments(item);
   openModal('sales-a-modal');
 }
+
+// 旧APIとの互換性（文字列キーでも開ける）
+function openSalesADetail(id) {
+  // salesADataByKey から対応する item の id を探す
+  const item = salesAData.find(d => d.axisId === id);
+  if (item) {
+    openSalesADetailModal(item.id);
+  }
+}
+
+function renderSalesAAttachments(item) {
+  const list = document.getElementById('sales-a-attachment-list');
+  if (!list) return;
+  if (!item.attachments || item.attachments.length === 0) {
+    list.innerHTML = '<p style="font-size:13px;color:#9ca3af;margin:0;">添付ファイルはありません</p>';
+    return;
+  }
+  list.innerHTML = '';
+  [...item.attachments].reverse().forEach(att => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;';
+    div.innerHTML = `
+      <span style="flex:1;">📄 ${att.name}</span>
+      <span style="color:#9ca3af;font-size:12px;">${att.uploadedAt}</span>
+      <span style="color:#6b7280;font-size:12px;">${att.size}</span>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function handleSalesAFileDrop(event) {
+  event.preventDefault();
+  const zone = document.getElementById('sales-a-drop-zone');
+  if (zone) zone.style.background = '#f9fafb';
+  const files = Array.from(event.dataTransfer.files);
+  addSalesAAttachments(files);
+}
+
+function handleSalesAFileSelect(event) {
+  const files = Array.from(event.target.files);
+  addSalesAAttachments(files);
+  event.target.value = '';
+}
+
+function addSalesAAttachments(files) {
+  const item = salesAData.find(d => d.id === currentSalesADetailId);
+  if (!item) return;
+  if (!item.attachments) item.attachments = [];
+
+  files.forEach(file => {
+    const sizeKB = (file.size / 1024).toFixed(1);
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+    item.attachments.push({
+      name:       file.name,
+      uploadedAt: new Date().toLocaleString('ja-JP'),
+      size:       file.size > 1024 * 1024 ? `${sizeMB}MB` : `${sizeKB}KB`
+    });
+  });
+
+  renderSalesAAttachments(item);
+}
+
+
 
 // ===== 工事詳細 =====
 function openSalesBDetail(id) {
