@@ -2493,29 +2493,54 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
   </div>
 </section>
 
-<!-- ===== 7. 申込書管理（親ID一覧） ===== -->
+<!-- ===== 7. 案件管理（アクシスID）一覧 ===== -->
 <section class="page" id="page-orders">
   <div class="page-header">
     <div>
-      <div class="page-title">申込書管理（親ID一覧）</div>
-      <div class="page-subtitle">全申込書・枝番の管理</div>
+      <div class="page-title">案件管理（アクシスID）一覧</div>
+      <div class="page-subtitle" id="orders-subtitle">全申込書・枝番の管理</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-sm btn-secondary" id="orders-clear-filter" style="display:none;" onclick="clearOrderFilter()"><i class="ti ti-x"></i> フィルター解除</button>
+      <button class="btn btn-primary"><i class="ti ti-plus"></i> 新規申込書受付</button>
     </div>
   </div>
 
   <div class="kpi-grid kpi-grid-3" style="margin-bottom:16px;">
     <div class="kpi-card">
       <div class="kpi-label">今月の申込書</div>
-      <div class="kpi-value">6件</div>
+      <div class="kpi-value" id="orders-kpi-month">6件</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">発行済み枝番</div>
-      <div class="kpi-value">8件</div>
-      <div class="kpi-sub">A:3 B:3 C:2（現行）</div>
+      <div class="kpi-value" id="orders-kpi-branches">8件</div>
+      <div class="kpi-sub" id="orders-kpi-sub">A:3 B:3 C:2（現行）</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">累計申込書</div>
-      <div class="kpi-value">89件</div>
+      <div class="kpi-value" id="orders-kpi-total">89件</div>
     </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+    <!-- 検索窓 -->
+    <input
+      type="text"
+      id="order-search-input"
+      placeholder="親ID・企業名・担当者・枝番名で検索..."
+      oninput="applyOrderFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:280px;"
+    />
+    <!-- 企業名フィルター -->
+    <select id="order-company-filter" onchange="applyOrderFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+      <option value="">企業名（すべて）</option>
+    </select>
+    <!-- クリアボタン -->
+    <button onclick="clearOrderFilter()"
+      style="padding:6px 12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+      クリア
+    </button>
   </div>
 
   <div class="table-wrap">
@@ -2531,132 +2556,7 @@ tr.sum-row td { font-weight: 700; background: #FAFAF8; border-top: 2px solid var
           <th>操作</th>
         </tr>
       </thead>
-      <tbody>
-        <!-- 20260614002 -->
-        <tr class="parent-row clickable" onclick="toggleAccordion('order-20260614002')">
-          <td><span class="pid">20260614002</span></td>
-          <td>オムロンSS／東京本社</td>
-          <td>山田 健太</td>
-          <td>2026/06/14</td>
-          <td><span class="tag tag-a" style="margin-right:3px;">A</span><span class="tag tag-c">C</span></td>
-          <td>2件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260614002-1">
-          <td colspan="7">
-            <span class="cid-a">20260614002A01</span>　機器販売　絶縁監視装置AZ100 3品 / ¥62,700
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-a')">→ 機器販売管理</button>
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260614002-2">
-          <td colspan="7">
-            <span class="cid-c">20260614002C01</span>　サブスク　LTE絶縁監視サービス ¥600/月
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-c')">→ サブスク管理</button>
-          </td>
-        </tr>
-
-        <!-- 20260614001 -->
-        <tr class="parent-row clickable" onclick="toggleAccordion('order-20260614001')">
-          <td><span class="pid">20260614001</span></td>
-          <td>NTT東日本／名古屋支店</td>
-          <td>斎藤 健一</td>
-          <td>2026/06/14</td>
-          <td><span class="tag tag-a" style="margin-right:3px;">A</span><span class="tag tag-b" style="margin-right:3px;">B</span><span class="tag tag-c">C</span></td>
-          <td>3件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260614001-1">
-          <td colspan="7">
-            <span class="cid-a">20260614001A01</span>　機器販売　M2Mセット 2品 / ¥98,000
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-a')">→ 機器販売管理</button>
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260614001-2">
-          <td colspan="7">
-            <span class="cid-b">20260614001B01</span>　工事　名古屋 設備工事 ¥800,000
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-b')">→ 工事管理</button>
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260614001-3">
-          <td colspan="7">
-            <span class="cid-c">20260614001C01</span>　サブスク　プレミアムプラン ¥120,000/月
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-c')">→ サブスク管理</button>
-          </td>
-        </tr>
-
-        <!-- 20260610001 -->
-        <tr class="parent-row clickable" onclick="toggleAccordion('order-20260610001')">
-          <td><span class="pid">20260610001</span></td>
-          <td>テスト工業／本社</td>
-          <td>鈴木 太郎</td>
-          <td>2026/06/10</td>
-          <td><span class="tag tag-a" style="margin-right:3px;">A</span><span class="tag tag-b">B</span></td>
-          <td>3件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260610001-1">
-          <td colspan="7">
-            <span class="cid-a">20260610001A01</span>　機器販売　3品 / ¥730,000
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-a')">→ 機器販売管理</button>
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260610001-2">
-          <td colspan="7">
-            <span class="cid-a">20260610001A02</span>　機器販売（追加発注）　1品 / ¥240,000
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-a')">→ 機器販売管理</button>
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260610001-3">
-          <td colspan="7">
-            <span class="cid-b">20260610001B01</span>　工事　大阪 更新工事 ¥1,200,000
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-b')">→ 工事管理</button>
-          </td>
-        </tr>
-
-        <!-- 20260601001 -->
-        <tr class="parent-row clickable" onclick="toggleAccordion('order-20260601001')">
-          <td><span class="pid">20260601001</span></td>
-          <td>サブスク商事／本社</td>
-          <td>田中 花子</td>
-          <td>2026/06/01</td>
-          <td><span class="tag tag-c">C</span></td>
-          <td>1件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20260601001-1">
-          <td colspan="7">
-            <span class="cid-c">20260601001C01</span>　サブスク　スタンダードプラン ¥48,000/月
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-c')">→ サブスク管理</button>
-          </td>
-        </tr>
-
-        <!-- 20240901001 -->
-        <tr class="parent-row clickable" onclick="toggleAccordion('order-20240901001')">
-          <td><span class="pid">20240901001</span></td>
-          <td>NTT東日本／名古屋</td>
-          <td>斎藤 健一</td>
-          <td>2024/09/01</td>
-          <td><span class="tag tag-c">C</span></td>
-          <td>C×3件</td>
-          <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20240901001-1">
-          <td colspan="7">
-            <span class="cid-c">20240901001C01</span>　サブスク（終了）　プレミアムプラン 2024/09〜2025/08
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20240901001-2">
-          <td colspan="7">
-            <span class="cid-c">20240901001C02</span>　サブスク（終了）　プレミアムプラン 2025/09〜2026/08
-          </td>
-        </tr>
-        <tr class="accordion-child child-row" id="acc-20240901001-3">
-          <td colspan="7">
-            <span class="cid-c">20240901001C03</span>　サブスク（現行）　プレミアムプラン 2026/09〜2027/08
-            <button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('sales-c')">→ サブスク管理</button>
-          </td>
-        </tr>
-      </tbody>
+      <tbody id="orders-tbody"></tbody>
     </table>
   </div>
 </section>
@@ -3856,6 +3756,9 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
       applyContactFilter();
     } else if (item.dataset.page === 'agencies') {
       renderAgencyTable(agenciesData);
+    } else if (item.dataset.page === 'orders') {
+      initOrderFilter();
+      applyOrderFilter();
     }
   });
 });
@@ -3866,6 +3769,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactFilter();
   applyContactFilter();
   renderAgencyTable(agenciesData);
+  initOrderFilter();
+  applyOrderFilter();
 });
 
 // ===== 企業管理：モックデータ =====
@@ -3936,6 +3841,16 @@ function renderCompanyTable(data) {
 
 function jumpToAxisList(companyName) {
   navigate('orders');
+  initOrderFilter();
+
+  const subtitle = document.getElementById('orders-subtitle');
+  const clearBtn = document.getElementById('orders-clear-filter');
+  if (subtitle) subtitle.textContent = companyName + ' の案件（アクシスID）一覧';
+  if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+  const companyFilter = document.getElementById('order-company-filter');
+  if (companyFilter) companyFilter.value = companyName;
+  applyOrderFilter();
 }
 
 function renderCompanyPagination() {
@@ -4042,7 +3957,277 @@ function renderContactTable(data) {
 }
 
 function jumpToAxisListFromContact(contactName) {
-  navigate('orders');
+  const c = contactsData.find(x => x.name === contactName);
+  const companyName = c ? c.companyName : '';
+  if (companyName) {
+    jumpToAxisList(companyName);
+  } else {
+    navigate('orders');
+    initOrderFilter();
+    const searchInput = document.getElementById('order-search-input');
+    if (searchInput) searchInput.value = contactName;
+    applyOrderFilter();
+  }
+}
+
+// ===== 案件管理（アクシスID）一覧：モックデータ＆処理 =====
+const ordersData = [
+  // === オムロンSS株式会社 9件 ===
+  {
+    pid: '20260614002',
+    company: 'オムロンSS株式会社',
+    branch: '東京本社',
+    contact: '山田 健太',
+    date: '2026/06/14',
+    types: ['A', 'C'],
+    branchCountText: '2件',
+    children: [
+      { cid: '20260614002A01', tag: 'a', desc: '機器販売　絶縁監視装置AZ100 3品 / ¥62,700', target: 'sales-a' },
+      { cid: '20260614002C01', tag: 'c', desc: 'サブスク　LTE絶縁監視サービス ¥600/月', target: 'sales-c' }
+    ]
+  },
+  {
+    pid: '20260612001',
+    company: 'オムロンSS株式会社',
+    branch: '東京本社',
+    contact: '佐藤 一郎',
+    date: '2026/06/12',
+    types: ['A'],
+    branchCountText: '1件',
+    children: [
+      { cid: '20260612001A01', tag: 'a', desc: '機器販売　太陽光センサーBOX 5台 / ¥150,000', target: 'sales-a' }
+    ]
+  },
+  {
+    pid: '20260608003',
+    company: 'オムロンSS株式会社',
+    branch: '関西支店',
+    contact: '田中 美咲',
+    date: '2026/06/08',
+    types: ['B', 'C'],
+    branchCountText: '2件',
+    children: [
+      { cid: '20260608003B01', tag: 'b', desc: '工事　工場内通信配線工事 / ¥450,000', target: 'sales-b' },
+      { cid: '20260608003C01', tag: 'c', desc: 'サブスク　クラウド稼働監視パック ¥12,000/月', target: 'sales-c' }
+    ]
+  },
+  {
+    pid: '20260528001',
+    company: 'オムロンSS株式会社',
+    branch: '名古屋営業所',
+    contact: '山田 健太',
+    date: '2026/05/28',
+    types: ['A', 'B'],
+    branchCountText: '2件',
+    children: [
+      { cid: '20260528001A01', tag: 'a', desc: '機器販売　電力モニタKM50 10台 / ¥280,000', target: 'sales-a' },
+      { cid: '20260528001B01', tag: 'b', desc: '工事　盤内取付工事 / ¥180,000', target: 'sales-b' }
+    ]
+  },
+  {
+    pid: '20260515002',
+    company: 'オムロンSS株式会社',
+    branch: '東京本社',
+    contact: '佐藤 一郎',
+    date: '2026/05/15',
+    types: ['C'],
+    branchCountText: '1件',
+    children: [
+      { cid: '20260515002C01', tag: 'c', desc: 'サブスク　エネルギー分析AIサービス ¥30,000/月', target: 'sales-c' }
+    ]
+  },
+  {
+    pid: '20260420001',
+    company: 'オムロンSS株式会社',
+    branch: '九州支店',
+    contact: '田中 美咲',
+    date: '2026/04/20',
+    types: ['A'],
+    branchCountText: '1件',
+    children: [
+      { cid: '20260420001A01', tag: 'a', desc: '機器販売　環境センサーゲートウェイ 2台 / ¥90,000', target: 'sales-a' }
+    ]
+  },
+  {
+    pid: '20260405004',
+    company: 'オムロンSS株式会社',
+    branch: '東京本社',
+    contact: '山田 健太',
+    date: '2026/04/05',
+    types: ['B'],
+    branchCountText: '1件',
+    children: [
+      { cid: '20260405004B01', tag: 'b', desc: '工事　EMSシステム導入設定工事 / ¥600,000', target: 'sales-b' }
+    ]
+  },
+  {
+    pid: '20260318002',
+    company: 'オムロンSS株式会社',
+    branch: '東北支店',
+    contact: '佐藤 一郎',
+    date: '2026/03/18',
+    types: ['A', 'C'],
+    branchCountText: '2件',
+    children: [
+      { cid: '20260318002A01', tag: 'a', desc: '機器販売　通信ユニット 4台 / ¥80,000', target: 'sales-a' },
+      { cid: '20260318002C01', tag: 'c', desc: 'サブスク　リモートメンテパック ¥8,000/月', target: 'sales-c' }
+    ]
+  },
+  {
+    pid: '20260210001',
+    company: 'オムロンSS株式会社',
+    branch: '東京本社',
+    contact: '山田 健太',
+    date: '2026/02/10',
+    types: ['C'],
+    branchCountText: '1件',
+    children: [
+      { cid: '20260210001C01', tag: 'c', desc: 'サブスク　設備予知保全プラットフォーム ¥50,000/月', target: 'sales-c' }
+    ]
+  },
+
+  // === 他企業のデータ（既存内容の維持・拡張） ===
+  {
+    pid: '20260614001',
+    company: 'NTT東日本株式会社',
+    branch: '名古屋支店',
+    contact: '斎藤 健一',
+    date: '2026/06/14',
+    types: ['A', 'B', 'C'],
+    branchCountText: '3件',
+    children: [
+      { cid: '20260614001A01', tag: 'a', desc: '機器販売　M2Mセット 2品 / ¥98,000', target: 'sales-a' },
+      { cid: '20260614001B01', tag: 'b', desc: '工事　名古屋 設備工事 ¥800,000', target: 'sales-b' },
+      { cid: '20260614001C01', tag: 'c', desc: 'サブスク　プレミアムプラン ¥120,000/月', target: 'sales-c' }
+    ]
+  },
+  {
+    pid: '20260610001',
+    company: 'テスト工業株式会社',
+    branch: '本社',
+    contact: '鈴木 太郎',
+    date: '2026/06/10',
+    types: ['A', 'B'],
+    branchCountText: '3件',
+    children: [
+      { cid: '20260610001A01', tag: 'a', desc: '機器販売　3品 / ¥730,000', target: 'sales-a' },
+      { cid: '20260610001A02', tag: 'a', desc: '機器販売（追加発注）　1品 / ¥240,000', target: 'sales-a' },
+      { cid: '20260610001B01', tag: 'b', desc: '工事　大阪 更新工事 ¥1,200,000', target: 'sales-b' }
+    ]
+  },
+  {
+    pid: '20260601001',
+    company: 'サブスク商事株式会社',
+    branch: '本社',
+    contact: '田中 花子',
+    date: '2026/06/01',
+    types: ['C'],
+    branchCountText: '1件',
+    children: [
+      { cid: '20260601001C01', tag: 'c', desc: 'サブスク　スタンダードプラン ¥48,000/月', target: 'sales-c' }
+    ]
+  },
+  {
+    pid: '20240901001',
+    company: 'NTT東日本株式会社',
+    branch: '名古屋支店',
+    contact: '斎藤 健一',
+    date: '2024/09/01',
+    types: ['C'],
+    branchCountText: 'C×3件',
+    children: [
+      { cid: '20240901001C01', tag: 'c', desc: 'サブスク（終了）　プレミアムプラン 2024/09〜2025/08', target: null },
+      { cid: '20240901001C02', tag: 'c', desc: 'サブスク（終了）　プレミアムプラン 2025/09〜2026/08', target: null },
+      { cid: '20240901001C03', tag: 'c', desc: 'サブスク（現行）　プレミアムプラン 2026/09〜2027/08', target: 'sales-c' }
+    ]
+  }
+];
+
+function renderOrderTable(data) {
+  const tbody = document.getElementById('orders-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  data.forEach(order => {
+    // 親行
+    const trParent = document.createElement('tr');
+    trParent.className = 'parent-row clickable';
+    trParent.setAttribute('onclick', `toggleAccordion('order-${order.pid}')`);
+
+    const typesHtml = order.types.map(t => `<span class="tag tag-${t.toLowerCase()}" style="margin-right:3px;">${t}</span>`).join('');
+    const companyBranch = order.company + (order.branch ? '／' + order.branch : '');
+
+    trParent.innerHTML = `
+      <td><span class="pid">${order.pid}</span></td>
+      <td>${companyBranch}</td>
+      <td>${order.contact}</td>
+      <td>${order.date}</td>
+      <td>${typesHtml}</td>
+      <td>${order.branchCountText}</td>
+      <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
+    `;
+    tbody.appendChild(trParent);
+
+    // 子行
+    if (order.children && order.children.length > 0) {
+      order.children.forEach((child, i) => {
+        const trChild = document.createElement('tr');
+        trChild.className = 'accordion-child child-row';
+        trChild.id = `acc-${order.pid}-${i+1}`;
+        
+        const btnHtml = child.target ? `<button class="btn btn-sm btn-secondary" style="margin-left:12px;" onclick="navigate('${child.target}')">→ ${child.target === 'sales-a' ? '機器販売管理' : child.target === 'sales-b' ? '工事管理' : 'サブスク管理'}</button>` : '';
+        
+        trChild.innerHTML = `
+          <td colspan="7">
+            <span class="cid-${child.tag}">${child.cid}</span>　${child.desc}
+            ${btnHtml}
+          </td>
+        `;
+        tbody.appendChild(trChild);
+      });
+    }
+  });
+}
+
+let orderFilterInitialized = false;
+function initOrderFilter() {
+  const select = document.getElementById('order-company-filter');
+  if (!select || orderFilterInitialized) return;
+  const companies = [...new Set(ordersData.map(o => o.company))];
+  companies.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+  orderFilterInitialized = true;
+}
+
+function applyOrderFilter() {
+  const q = document.getElementById('order-search-input')?.value.trim().toLowerCase() || '';
+  const companyFilter = document.getElementById('order-company-filter')?.value || '';
+
+  const filtered = ordersData.filter(o => {
+    const matchQ = o.pid.includes(q) || o.company.toLowerCase().includes(q) || o.contact.toLowerCase().includes(q) || (o.children && o.children.some(c => c.cid.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q)));
+    const matchCompany = companyFilter === '' || o.company === companyFilter;
+    return matchQ && matchCompany;
+  });
+
+  renderOrderTable(filtered);
+}
+
+function clearOrderFilter() {
+  const searchInput = document.getElementById('order-search-input');
+  const companyFilter = document.getElementById('order-company-filter');
+  if (searchInput) searchInput.value = '';
+  if (companyFilter) companyFilter.value = '';
+
+  const subtitle = document.getElementById('orders-subtitle');
+  const clearBtn = document.getElementById('orders-clear-filter');
+  if (subtitle) subtitle.textContent = '全申込書・枝番の管理';
+  if (clearBtn) clearBtn.style.display = 'none';
+
+  applyOrderFilter();
 }
 
 let contactFilterInitialized = false;
