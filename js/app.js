@@ -850,8 +850,8 @@ async function loadAgencies() {
 async function renderAgencyTable() {
   const tbody = document.querySelector('#agency-table tbody');
   if (!tbody) return;
-  const agenciesData = await loadAgencies();
-  const rows = agenciesData.map(a => {
+  const agencies = await loadAgencies();
+  const rows = agencies.map(a => {
     return `<tr>
       <td>${a.agency_name || ''}</td>
       <td>${a.agency_name_kana || ''}</td>
@@ -1137,10 +1137,12 @@ async function loadProducts() {
 }
 
 async function renderProductTable() {
-  const tbody = document.getElementById('product-tbody');
+  const tbody = document.querySelector('#product-tbody');
   if (!tbody) return;
-  const productsData = await loadProducts();
-  const rows = productsData.map(p => {
+  const products = await loadProducts();
+  tbody.innerHTML = '';
+  if (!products || products.length === 0) return;
+  const rows = products.map(p => {
     return `<tr>
       <td>${p.product_code || ''}</td>
       <td>${p.product_name || ''}</td>
