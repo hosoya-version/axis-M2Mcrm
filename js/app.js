@@ -4060,6 +4060,12 @@ async function submitWizard() {
     if (includeC && subscQty > 0) {
       const branchId = parentId + 'C01';
       const unitPrice = parseInt(document.getElementById('step4-subsc-price')?.value) || 0;
+      // 契約日・プラン・サイクルもフォームから取得して保存する
+      const planName    = document.getElementById('step4-subsc-plan')?.value || '';
+      const cycle       = document.getElementById('step4-subsc-cycle')?.value || '';
+      const contractStart = document.getElementById('step4-subsc-start')?.value || null;
+      const contractEnd   = document.getElementById('step4-subsc-end')?.value || null;
+      const cNote = [planName, cycle].filter(Boolean).join(' / ');
       const { error: cErr } = await sb.from('service_c').insert({
         branch_id:      branchId,
         axis_id:        parentId,
@@ -4068,7 +4074,10 @@ async function submitWizard() {
         cost_price:     0,
         status:         '処理中',
         billing_status: '未請求',
-        renewal_count:  0
+        contract_start: contractStart,
+        contract_end:   contractEnd,
+        renewal_count:  0,
+        notes:          cNote
       });
       if (cErr) throw new Error('service_c INSERT失敗: ' + cErr.message);
       insertedIds.c = branchId;
