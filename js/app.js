@@ -1646,7 +1646,38 @@ function wizardNext() {
   if (currentWizardStep < totalSteps) {
     currentWizardStep++;
     updateWizardUI();
+    // №8: Step3に入ったら、メイン担当者カードをPDF抽出（Step1入力）の担当者で更新
+    if (currentWizardStep === 3) syncStep3MainContact();
   }
+}
+
+// №8: 申込書PDFから抽出した担当者を Step3 の★メイン担当者カードに反映する。
+// ハードコードのサンプル（山田健太）を、実際の発注者担当者で上書きする。
+function syncStep3MainContact() {
+  const card = document.getElementById('contact-0');
+  if (!card) return;
+  const get = (id) => (document.getElementById(id)?.value || '').trim();
+  const name = get('s1-name');
+  if (!name) return;   // 抽出できていない場合は既存表示を維持
+
+  const dept  = get('s1-dept');
+  const tel   = get('s1-tel');
+  const fax   = get('s1-mobile');
+  const email = get('s1-email');
+
+  const nameEl = card.querySelector('.contact-card-name');
+  if (nameEl) nameEl.textContent = name;
+
+  // フォーム入力欄（順序：氏名/役職/部署/電話/FAX/携帯/メール）
+  const inputs = card.querySelectorAll('.contact-card-form .form-control');
+  // [0]氏名 [1]役職 [2]部署 [3]電話 [4]FAX [5]携帯 [6]メール
+  if (inputs[0]) inputs[0].value = name;
+  if (inputs[1]) inputs[1].value = '';      // 役職はPDFに無いことが多いのでクリア
+  if (inputs[2]) inputs[2].value = dept;
+  if (inputs[3]) inputs[3].value = tel;
+  if (inputs[4]) inputs[4].value = fax;
+  if (inputs[5]) inputs[5].value = '';      // 携帯
+  if (inputs[6]) inputs[6].value = email;
 }
 
 function wizardPrev() {
