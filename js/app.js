@@ -2214,11 +2214,67 @@ function openSubscRenewal(currentId, newSuffix) {
   openModal('subsc-renewal-modal');
 }
 
-function confirmRenewal() {
-  const parentId = renewalCurrentId.replace(/C\d+$/, '');
-  const newId = parentId + renewalNewSuffix;
-  alert(`✓ ${newId} を発行して更新登録が完了しました（モック）`);
-  closeModal('subsc-renewal-modal');
+async function confirmRenewal() {
+  const sb = window._sb;
+  try {
+    const oldBranchId = renewalCurrentId;                  // 例: "20260614001C01"
+    const parentId    = oldBranchId.replace(/C\d+$/, '');  // 例: "20260614001"
+    const newBranchId = parentId + renewalNewSuffix;       // 例: "20260614001C02"
+
+    // 1. 更新元レコードを branch_id で取得
+    const { data: orig, error: fErr } = await sb
+      .from('service_c')
+      .select('*')
+      .eq('branch_id', oldBranchId)
+      .single();
+    if (fErr) throw new Error('更新元レコードの取得に失敗しました: ' + fErr.message);
+
+    // 2. 契約期間を計算（旧終了日の翌日から1年。無ければ本日起算）
+    const fmt = d => d.toISOString().split('T')[0];
+    let newStart;
+    if (orig.contract_end) {
+      newStart = new Date(orig.contract_end);
+      newStart.setDate(newStart.getDate() + 1);
+    } else {
+      newStart = new Date();
+    }
+    const newEnd = new Date(newStart);
+    newEnd.setFullYear(newEnd.getFullYear() + 1);
+    newEnd.setDate(newEnd.getDate() - 1);
+
+    // 3. service_c に更新レコードを INSERT（axis_idは親IDのまま、枝番Cをインクリメント）
+    const { data: rec, error: iErr } = await sb.from('service_c').insert({
+      axis_id:          orig.axis_id,
+      branch_id:        newBranchId,
+      product_id:       orig.product_id,
+      temp_product_id:  orig.temp_product_id,
+      unit_price:       orig.unit_price,
+      cost_price:       orig.cost_price,
+      status:           '処理中',
+      billing_status:   '未請求',
+      contract_start:   fmt(newStart),
+      contract_end:     fmt(newEnd),
+      renewal_count:    (orig.renewal_count || 0) + 1,
+      parent_branch_id: orig.id
+    }).select('branch_id').single();
+    if (iErr) throw new Error('service_c INSERT失敗: ' + iErr.message);
+
+    // 4. 旧レコードを「更新済」に
+    const { error: uErr } = await sb
+      .from('service_c')
+      .update({ status: '更新済' })
+      .eq('id', orig.id);
+    if (uErr) throw new Error('旧レコードの更新に失敗しました: ' + uErr.message);
+
+    // 5. UI 更新
+    alert(`✓ ${newBranchId} を発行して更新登録が完了しました\n契約期間: ${fmt(newStart)} 〜 ${fmt(newEnd)}`);
+    closeModal('subsc-renewal-modal');
+    if (typeof loadOrders === 'function') await loadOrders();
+
+  } catch (err) {
+    console.error('confirmRenewal error:', err);
+    alert('更新登録に失敗しました: ' + (err.message || err));
+  }
 }
 
 // ===== 入金登録 =====
@@ -2241,10 +2297,12 @@ function registerPayment() {
 
 // ===== モーダル共通 =====
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const el = document.getElementById(id);
+  if (el) el.classList.add('open');
 }
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
 }
 
 // オーバーレイクリックで閉じる
