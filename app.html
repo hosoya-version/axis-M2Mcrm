@@ -9,7 +9,7 @@
 <script>
   (async () => {
     const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { data: { session } } = await _sb.getSession();
+    const { data: { session } } = await _sb.auth.getSession();
     if (!session) {
       window.location.replace('index.html');
     }
