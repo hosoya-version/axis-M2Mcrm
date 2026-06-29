@@ -2551,7 +2551,7 @@ const MEMBERS_DB = [
   { email: 'saburo@axis-cloud.co.jp', password: 'axis0120', name: 'システム 三郎', phone: '03-0000-0001', company: 'Axis Cloud株式会社', role: 'user',  isInitialPw: true }
 ];
 
-let currentUser = null;
+// currentUser は app.html(<head>) が window.currentUser に設定する（一本化）
 let pwInitTargetEmail = '';
 
 
@@ -2559,13 +2559,11 @@ let pwInitTargetEmail = '';
 
 // ログイン完了処理
 function completeLogin() {
-  document.getElementById('login-screen').classList.remove('active');
-  document.getElementById('reset-screen').classList.remove('active');
-
-  // サイドバーにユーザー表示
+  // サイドバーにユーザー表示（window.currentUserを参照）
   const label = document.getElementById('sidebar-user-label');
-  if (label) {
-    label.textContent = currentUser.name + (currentUser.role === 'admin' ? '（管理者）' : '');
+  const cu = window.currentUser;
+  if (label && cu) {
+    label.textContent = cu.name + (cu.role === 'admin' ? '（管理者）' : '');
   }
 
   // PW初期化依頼通知バナーを更新
@@ -2612,12 +2610,17 @@ function openMembersScreen() {
   const screen = document.getElementById('members-screen');
   screen.classList.add('active');
 
-  const userInfo = document.getElementById('members-user-info');
-  if (currentUser) {
-    userInfo.textContent = 'ログイン中: ' + currentUser.name;
+  // window.currentUserが未設定ならappUserReady後に再実行
+  if (!window.currentUser) {
+    window.addEventListener('appUserReady', () => openMembersScreen(), { once: true });
+    return;
   }
 
-  if (currentUser && currentUser.role === 'admin') {
+  const cu = window.currentUser;
+  const userInfo = document.getElementById('members-user-info');
+  if (userInfo) userInfo.textContent = 'ログイン中: ' + cu.name;
+
+  if (cu.role === 'admin') {
     document.getElementById('members-admin-view').style.display = 'block';
     document.getElementById('members-denied-view').style.display = 'none';
     // 検索フィールドをリセットしてテーブルを描画
@@ -2682,7 +2685,7 @@ function renderMembersTable(filter) {
       ? '<span class="badge badge-blue">管理者</span>'
       : '<span class="badge badge-gray">一般</span>';
     const phone = m.phone || '—';
-    const isCurrentUser = currentUser && currentUser.email === m.email;
+    const isCurrentUser = window.currentUser && window.currentUser.email === m.email;
     const deleteBtn = isCurrentUser
       ? `<button class="btn btn-sm btn-danger" style="opacity:0.4;cursor:not-allowed;" disabled title="自分自身は削除できません"><i class="ti ti-trash"></i> 削除</button>`
       : `<button class="btn btn-sm btn-danger" onclick="openDeleteMember('${m.email}')"><i class="ti ti-trash"></i> 削除</button>`;
@@ -2752,10 +2755,10 @@ function saveMemberEdit() {
   m.role = newRole;
 
   // 現在ログイン中のユーザーが自分自身を編集した場合は currentUser も更新
-  if (currentUser && currentUser.email === origEmail) {
-    currentUser = m;
+  if (window.currentUser && window.currentUser.email === origEmail) {
+    window.currentUser = m;
     const label = document.getElementById('sidebar-user-label');
-    if (label) label.textContent = currentUser.name + (currentUser.role === 'admin' ? '（管理者）' : '');
+    if (label) label.textContent = window.currentUser.name + (window.currentUser.role === 'admin' ? '（管理者）' : '');
   }
 
   closeModal('member-edit-modal');
@@ -2780,7 +2783,7 @@ function openDeleteMember(email) {
     `${m.name}（${m.email}）を削除しますか？この操作は元に戻せません。`;
 
   // 自分自身の場合はエラーを表示して削除ボタンを無効化
-  if (currentUser && currentUser.email === email) {
+  if (window.currentUser && window.currentUser.email === email) {
     errEl.textContent = '現在ログイン中のユーザー自身は削除できません。';
     errEl.style.display = 'block';
     document.getElementById('delete-member-btn').disabled = true;
@@ -2794,7 +2797,7 @@ function openDeleteMember(email) {
 }
 
 function executeDeleteMember() {
-  if (currentUser && currentUser.email === _deleteTargetEmail) {
+  if (window.currentUser && window.currentUser.email === _deleteTargetEmail) {
     const errEl = document.getElementById('delete-member-error');
     errEl.textContent = '現在ログイン中のユーザー自身は削除できません。';
     errEl.style.display = 'block';
@@ -2915,13 +2918,13 @@ function updatePwResetNotification() {
   if (!notification) return;
 
   // 管理者以外は常に非表示
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!window.currentUser || window.currentUser.role !== 'admin') {
     notification.style.display = 'none';
     return;
   }
 
   // isInitialPw === true のメンバーをカウント（自分自身は除く）
-  const count = MEMBERS_DB.filter(m => m.isInitialPw === true && m.email !== currentUser.email).length;
+  const count = MEMBERS_DB.filter(m => m.isInitialPw === true && m.email !== window.currentUser.email).length;
 
   if (count === 0) {
     notification.style.display = 'none';

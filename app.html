@@ -42,6 +42,8 @@
     window.currentUser = {
       uid: uid,
       displayName: displayName,
+      name: displayName,          // app.js互換用
+      email: session.user.email,  // app.js互換用
       role: member.role
     };
 
@@ -49,6 +51,9 @@
     if (nameEl) nameEl.textContent = displayName;
 
     console.log('ログインユーザー:', window.currentUser);
+
+    // app.jsへ「ユーザー情報準備完了」を通知
+    window.dispatchEvent(new Event('appUserReady'));
   });
 </script>
 <meta name="viewport" content="width=1280">
