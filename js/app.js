@@ -242,7 +242,7 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
         applyContactFilter();
       });
     } else if (item.dataset.page === 'agencies') {
-      renderAgencyTable(agenciesData);
+      renderAgencyTable();
     } else if (item.dataset.page === 'orders') {
       initOrderFilter();
       applyOrderFilter();
@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyCompanyFilter();
   initContactFilter();
   applyContactFilter();
-  renderAgencyTable(agenciesData);
+  renderAgencyTable();
   renderProductTable();
   renderTempProductTable();
   buildSalesADataByKey();
@@ -842,63 +842,35 @@ function goToContacts(companyName) {
   });
 }
 
-// ===== 代理店管理：モックデータ =====
-let agenciesData = [
-  {
-    id: 1,
-    name: '株式会社アルファ商事',
-    furigana: 'アルファショウジ',
-    tel: '03-1234-5678',
-    email: 'info@alpha.co.jp',
-    address: '東京都新宿区西新宿1-1-1',
-    linkedCompanies: ['NTT東日本株式会社', 'テスト工業株式会社'],
-    linkedAxisIds: ['AX-0001', 'AX-0002'],
-  },
-  {
-    id: 2,
-    name: '株式会社ベータネット',
-    furigana: 'ベータネット',
-    tel: '06-2345-6789',
-    email: 'contact@beta-net.co.jp',
-    address: '大阪府大阪市北区梅田2-2-2',
-    linkedCompanies: ['テスト工業株式会社'],
-    linkedAxisIds: ['AX-0003'],
-  },
-  {
-    id: 3,
-    name: 'ガンマソリューションズ株式会社',
-    furigana: 'ガンマソリューションズ',
-    tel: '052-3456-7890',
-    email: 'support@gamma-sol.co.jp',
-    address: '愛知県名古屋市中村区名駅3-3-3',
-    linkedCompanies: ['オムロンSS株式会社', 'サブスク商事株式会社'],
-    linkedAxisIds: ['AX-0005', 'AX-0009'],
-  },
-];
+// ===== 代理店管理 =====
+async function loadAgencies() {
+  const { data, error } = await window._sb
+    .from('agencies')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-function renderAgencyTable(data) {
+  if (error) {
+    console.error('agencies取得エラー:', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function renderAgencyTable() {
   const tbody = document.querySelector('#agency-table tbody');
   if (!tbody) return;
-  tbody.innerHTML = '';
-  data.forEach(agency => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${agency.name}</td>
-      <td>${agency.furigana}</td>
-      <td>${agency.tel}</td>
-      <td><a href="mailto:${agency.email}" style="color:#2563eb;">${agency.email}</a></td>
-      <td>${agency.address}</td>
-      <td>${agency.linkedCompanies && agency.linkedCompanies.length > 0
-            ? agency.linkedCompanies.join('、')
-            : '—'}</td>
-      <td>${agency.linkedAxisIds && agency.linkedAxisIds.length > 0 ? agency.linkedAxisIds.join('、') : '—'}</td>
-      <td>
-        <button class="btn-edit" onclick="openAgencyEditModal(${agency.id})" style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">編集</button>
-        <button class="btn-delete" onclick="deleteAgency(${agency.id})" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;margin-left:4px;">削除</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
+  const agenciesData = await loadAgencies();
+  const rows = agenciesData.map(a => {
+    return `<tr>
+      <td>${a.agency_name || ''}</td>
+      <td>${a.agency_name_kana || ''}</td>
+      <td>${a.postal_code || ''}</td>
+      <td>${a.address || ''}</td>
+      <td>${a.phone || ''}</td>
+      <td>${a.notes || ''}</td>
+    </tr>`;
   });
+  tbody.innerHTML = rows.join('');
 }
 
 // ===== 代理店管理：企業検索（インクリメンタルサーチ） =====
@@ -1123,13 +1095,13 @@ function saveAgency() {
     agenciesData.push({ id: newId, name, furigana, tel, email, address, linkedCompanies, linkedAxisIds });
   }
   closeModal('agency-modal');
-  renderAgencyTable(agenciesData);
+  renderAgencyTable();
 }
 
 function deleteAgency(id) {
   if (confirm('この代理店を削除してもよろしいですか？')) {
     agenciesData = agenciesData.filter(a => a.id !== id);
-    renderAgencyTable(agenciesData);
+    renderAgencyTable();
   }
 }
 
