@@ -22,12 +22,18 @@
     const uid = session.user.id;
     const { data: member, error } = await _sb
       .from('members')
-      .select('last_name, first_name, role')
+      .select('last_name, first_name, role, is_initial_pw')
       .eq('auth_uid', uid)
       .single();
 
     if (error || !member) {
       console.error('メンバー情報の取得に失敗:', error);
+      return;
+    }
+
+    // 初期パスワードのままならログイン画面（パスワード変更）へ戻す
+    if (member.is_initial_pw === true) {
+      window.location.href = 'index.html';
       return;
     }
 

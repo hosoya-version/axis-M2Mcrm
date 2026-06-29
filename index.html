@@ -81,9 +81,31 @@ async function initSupabase() {
 
 let supabaseClient = null;
 
+function showResetScreen() {
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('reset-screen').classList.add('active');
+}
+
+// 現在ログイン中ユーザーの is_initial_pw を取得（未ログイン時はnull）
+async function fetchInitialPwFlag() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) return null;
+  const { data: member } = await supabaseClient
+    .from('members')
+    .select('is_initial_pw')
+    .eq('auth_uid', session.user.id)
+    .single();
+  return member ? member.is_initial_pw : null;
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   supabaseClient = await initSupabase();
-  console.log('Supabase初期化完了:', supabaseClient);
+  console.log('Supabase初期化完了');
+  // 既にセッションがあり初期パスワードのままなら、リロード時も変更画面を表示
+  try {
+    const initialPw = await fetchInitialPwFlag();
+    if (initialPw === true) showResetScreen();
+  } catch (e) { /* 未ログイン等は無視 */ }
 });
 
 async function doLogin() {
@@ -111,6 +133,16 @@ async function doLogin() {
       errorEl.style.display = 'block';
       return;
     }
+    // 初期パスワードのままなら強制的に変更画面へ
+    const { data: member } = await supabaseClient
+      .from('members')
+      .select('is_initial_pw')
+      .eq('auth_uid', data.user.id)
+      .single();
+    if (member && member.is_initial_pw === true) {
+      showResetScreen();
+      return;
+    }
     window.location.href = 'app.html';
   } catch(e) {
     errorEl.textContent = '接続エラー: ' + e.message;
@@ -122,7 +154,7 @@ function openPasswordResetModal() {
   alert('パスワードリセットについては管理者にお問い合わせください。');
 }
 
-function doPasswordReset() {
+async function doPasswordReset() {
   const newPw = document.getElementById('reset-new-pw').value;
   const confirmPw = document.getElementById('reset-confirm-pw').value;
   const errorEl = document.getElementById('reset-error');
@@ -137,7 +169,36 @@ function doPasswordReset() {
     errorEl.style.display = 'block';
     return;
   }
-  alert('パスワードを変更しました（実装予定）');
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+      errorEl.textContent = 'セッションが切れています。再度ログインしてください。';
+      errorEl.style.display = 'block';
+      return;
+    }
+    // 1. Authのパスワードを更新
+    const { error: pwErr } = await supabaseClient.auth.updateUser({ password: newPw });
+    if (pwErr) {
+      errorEl.textContent = 'パスワード変更エラー: ' + pwErr.message;
+      errorEl.style.display = 'block';
+      return;
+    }
+    // 2. members.is_initial_pw を false に更新
+    const { error: upErr } = await supabaseClient
+      .from('members')
+      .update({ is_initial_pw: false })
+      .eq('auth_uid', session.user.id);
+    if (upErr) {
+      errorEl.textContent = 'プロフィール更新エラー: ' + upErr.message;
+      errorEl.style.display = 'block';
+      return;
+    }
+    // 3. アプリ本体へ
+    window.location.href = 'app.html';
+  } catch(e) {
+    errorEl.textContent = '接続エラー: ' + e.message;
+    errorEl.style.display = 'block';
+  }
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
