@@ -2669,25 +2669,43 @@ async function executePasswordInit() {
   const sb = window._sb;
   if (!sb) return;
 
-  // is_initial_pw = true に更新（次回ログイン時に強制変更）
-  // 注: Authのパスワード自体を axis0120 に戻すには Admin API が必要なため
-  //     ここでは行わない。実運用では「管理者が axis0120 を口頭等で伝える」運用とする。
-  const { error } = await sb
-    .from('members')
-    .update({ is_initial_pw: true })
-    .eq('email', email);
+  try {
+    // Edge Function でAuthパスワードをaxis0120にリセット＋is_initial_pw=trueに更新
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      alert('セッションが切れています。再ログインしてください。');
+      return;
+    }
+    const res = await fetch(
+      'https://ejtaqzwqadkcdbvxocfw.supabase.co/functions/v1/reset-member-password',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + session.access_token,
+          // 注: SUPABASE_ANON_KEY は config.js のトップレベル const のため
+          //     window.SUPABASE_ANON_KEY ではなくグローバル束縛を直接参照する
+          'apikey': (typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : (window.SUPABASE_ANON_KEY || ''))
+        },
+        body: JSON.stringify({ email })
+      }
+    );
 
-  if (error) {
-    alert('初期化エラー: ' + error.message);
-    return;
+    const result = await res.json();
+    if (!res.ok) {
+      alert('初期化エラー: ' + (result.error || res.status));
+      return;
+    }
+
+    closeModal('pw-init-modal');
+    alert('パスワードを axis0120 にリセットしました。\n対象ユーザーは次回ログイン時にパスワード変更が求められます。');
+
+    await renderMembersTable('');
+    updatePwResetNotification();
+
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
   }
-
-  closeModal('pw-init-modal');
-  alert('パスワード初期化依頼を登録しました。\n対象ユーザーは次回ログイン時に axis0120 でログインし、パスワード変更を求められます。');
-
-  // テーブル再描画＆通知バナー更新
-  await renderMembersTable('');
-  updatePwResetNotification();
 }
 
 // =========================================================
