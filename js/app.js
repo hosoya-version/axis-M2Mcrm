@@ -237,8 +237,10 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
       loadCompanies();
       applyCompanyFilter();
     } else if (item.dataset.page === 'contacts') {
-      initContactFilter();
-      applyContactFilter();
+      loadContacts().then(() => {
+        initContactFilter();
+        applyContactFilter();
+      });
     } else if (item.dataset.page === 'agencies') {
       renderAgencyTable(agenciesData);
     } else if (item.dataset.page === 'orders') {
@@ -425,25 +427,78 @@ function applyCompanyFilter() {
   updateCompanyView();
 }
 
-// ===== 担当者管理：モックデータ =====
-const contactsData = [
-  { id: 1, name: '斎藤 健一', furigana: 'サイトウ ケンイチ', companyName: 'NTT東日本株式会社', branchName: '名古屋支店', department: '営業部', position: '部長', tel: '052-111-0001', fax: '052-111-0002', email: 'saito@ntte.co.jp', axisIdCount: 3 },
-  { id: 2, name: '大園 美咲', furigana: 'オオゾノ ミサキ', companyName: 'NTT東日本株式会社', branchName: '埼玉支店', department: '技術部', position: '課長', tel: '048-222-0002', fax: '048-222-0003', email: 'osono@ntte.co.jp', axisIdCount: 2 },
-  { id: 3, name: '鈴木 太郎', furigana: 'スズキ タロウ', companyName: 'テスト工業株式会社', branchName: '本社', department: '購買部', position: '主任', tel: '06-333-0003', fax: '06-333-0004', email: 'suzuki@test.co.jp', axisIdCount: 2 },
-  { id: 4, name: '田中 花子', furigana: 'タナカ ハナコ', companyName: 'サブスク商事株式会社', branchName: '本社', department: '総務部', position: '係長', tel: '03-444-0004', fax: '03-444-0005', email: 'tanaka@subsc.co.jp', axisIdCount: 1 },
-  { id: 5, name: '山田 健太', furigana: 'ヤマダ ケンタ', companyName: 'オムロンSS株式会社', branchName: '東京本社', department: '営業部', position: '部長', tel: '—', fax: '03-6718-1235', email: 'k.yamada@omron-ss.co.jp', axisIdCount: 5 },
-  { id: 6, name: '佐藤 一郎', furigana: 'サトウ イチロウ', companyName: 'オムロンSS株式会社', branchName: '東京本社', department: '技術部', position: '課長', tel: '03-6718-1234', fax: '03-6718-1236', email: 's.sato@omron-ss.co.jp', axisIdCount: 3 },
-  { id: 7, name: '田中 美咲', furigana: 'タナカ ミサキ', companyName: 'オムロンSS株式会社', branchName: '東京本社', department: '購買部', position: '担当', tel: '03-6718-5678', fax: '03-6718-5679', email: 'm.tanaka@omron-ss.co.jp', axisIdCount: 1 },
-  { id: 8, name: '伊藤 次郎', furigana: 'イトウ ジロウ', companyName: '山田電機株式会社', branchName: '本社', department: '営業部', position: '課長', tel: '011-555-0006', fax: '011-555-0007', email: 'ito@yamada-e.co.jp', axisIdCount: 1 },
-  { id: 9, name: '渡辺 さくら', furigana: 'ワタナベ サクラ', companyName: '東京通信工業株式会社', branchName: '本社', department: '情報システム部', position: '主任', tel: '03-777-0008', fax: '03-777-0009', email: 'watanabe@ttk.co.jp', axisIdCount: 4 },
-  { id: 10, name: '中村 誠', furigana: 'ナカムラ マコト', companyName: '福岡システム株式会社', branchName: '本社', department: '開発部', position: '部長', tel: '092-999-0010', fax: '092-999-0011', email: 'nakamura@fukuoka-sys.co.jp', axisIdCount: 2 },
-];
+// =============================
+// Phase 4-② 担当者データ Supabase取得
+// =============================
+window.contactsData = [];
+
+async function loadContacts() {
+  const sb = window._sb;
+  if (!sb) {
+    console.error('Supabaseクライアントが未初期化です');
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('contacts')
+    .select(`
+      id,
+      company_id,
+      branch_id,
+      last_name,
+      first_name,
+      last_name_kana,
+      first_name_kana,
+      email,
+      phone,
+      role,
+      is_main,
+      notes,
+      companies ( name ),
+      branches ( name )
+    `)
+    .order('last_name', { ascending: true });
+
+  if (error) {
+    console.error('担当者データの取得に失敗しました:', error);
+    return;
+  }
+
+  // app.js 内の他の関数から参照できるようにグローバルへ保存
+  window.contactsData = data.map(c => ({
+    id:           c.id,
+    last_name:    c.last_name,
+    first_name:   c.first_name,
+    last_name_kana: c.last_name_kana,
+    first_name_kana: c.first_name_kana,
+    // 画面表示用の結合フィールド
+    name:         `${c.last_name ?? ''} ${c.first_name ?? ''}`.trim(),
+    furigana:     `${c.last_name_kana ?? ''} ${c.first_name_kana ?? ''}`.trim(),
+    companyName:  c.companies?.name ?? '—',
+    branchName:   c.branches?.name  ?? '—',
+    email:        c.email  ?? '—',
+    phone:        c.phone  ?? '—',
+    tel:          c.phone  ?? '—',
+    fax:          '—',
+    role:         c.role   ?? '',
+    department:   c.role   ?? '—',
+    position:     c.is_main ? 'メイン' : '',
+    is_main:      c.is_main ?? false,
+    notes:        c.notes  ?? '',
+    company_id:   c.company_id,
+    branch_id:    c.branch_id,
+    axisIdCount:  0,
+  }));
+
+  console.log(`担当者データ取得完了: ${window.contactsData.length}件`);
+}
 
 function renderContactTable(data) {
+  const list = data || window.contactsData || [];
   const tbody = document.querySelector('#contact-table tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  data.forEach(contact => {
+  list.forEach(contact => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${contact.name}</td>
@@ -465,7 +520,7 @@ function renderContactTable(data) {
 }
 
 function jumpToAxisListFromContact(contactName) {
-  const c = contactsData.find(x => x.name === contactName);
+  const c = (window.contactsData || []).find(x => x.name === contactName);
   const companyName = c ? c.companyName : '';
   if (companyName) {
     jumpToAxisList(companyName);
@@ -746,13 +801,14 @@ function initContactFilter() {
 
 function applyContactFilter() {
   const keyword = document.getElementById('contact-search-input')?.value || '';
-  const filtered = contactsData.filter(c => {
+  const list = window.contactsData || [];
+  const filtered = list.filter(c => {
     const matchKeyword =
-      c.name.includes(keyword) ||
-      c.furigana.includes(keyword) ||
-      c.companyName.includes(keyword) ||
-      c.tel.includes(keyword) ||
-      c.email.includes(keyword);
+      (c.name || '').includes(keyword) ||
+      (c.furigana || '').includes(keyword) ||
+      (c.companyName || '').includes(keyword) ||
+      (c.tel || c.phone || '').includes(keyword) ||
+      (c.email || '').includes(keyword);
     return matchKeyword;
   });
   renderContactTable(filtered);
@@ -772,16 +828,18 @@ function clearContactFilter() {
 
 function goToContacts(companyName) {
   navigate('contacts');
-  initContactFilter();
+  loadContacts().then(() => {
+    initContactFilter();
 
-  const subtitle = document.getElementById('contacts-subtitle');
-  const clearBtn = document.getElementById('contacts-clear-filter');
-  if (subtitle) subtitle.textContent = companyName + ' の担当者';
-  if (clearBtn) clearBtn.style.display = 'inline-flex';
+    const subtitle = document.getElementById('contacts-subtitle');
+    const clearBtn = document.getElementById('contacts-clear-filter');
+    if (subtitle) subtitle.textContent = companyName + ' の担当者';
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
 
-  const searchInput = document.getElementById('contact-search-input');
-  if (searchInput) searchInput.value = companyName;
-  applyContactFilter();
+    const searchInput = document.getElementById('contact-search-input');
+    if (searchInput) searchInput.value = companyName;
+    applyContactFilter();
+  });
 }
 
 // ===== 代理店管理：モックデータ =====
