@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSalesATable();
   initOrderFilter();
   applyOrderFilter();
+  initPdfDropZone();
 });
 
 // ===== 企業管理：Supabaseデータ =====
@@ -1430,6 +1431,41 @@ function handleFileUpload() {
   if (input) input.click();
 }
 
+// ドラッグ&ドロップでPDFを受け付ける初期化
+// 注: 実IDは file-dropzone / pdf-file-input。クリックは既存の inline onclick
+//     (handleFileUpload) が担うため、ここでは click リスナーは追加しない（二重起動防止）。
+function initPdfDropZone() {
+  const dropZone = document.getElementById('file-dropzone');
+  const fileInput = document.getElementById('pdf-file-input');
+  if (!dropZone || !fileInput) return;
+
+  // ドラッグオーバー（必須：これがないとdropが発火しない）
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.add('drag-over');
+  });
+
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+  });
+
+  // ドロップ
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      fileInput.files = files;
+      // 既存のファイル選択ハンドラ(onPdfFileSelected)を呼び出し
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+}
+
 // PDF選択時：base64化 → Edge FunctionでAI解析 → Step1/Step2に反映
 async function onPdfFileSelected(event) {
   const file = event.target.files && event.target.files[0];
@@ -2228,36 +2264,6 @@ function openSalesBDetail(id) {
   openModal('sales-b-modal');
 }
 
-// ===== サブスク詳細 =====
-function openSubscDetail(id) {
-  const d = (window.subscData || {})[id];
-  if (!d) return;
-
-  const timelineHtml = d.timeline.map(t => {
-    const isCurrent = t.status === 'current';
-    const isOrigin  = t.status === 'origin';
-    const cls = isCurrent ? 'current' : (t.status === 'ended' ? 'ended' : '');
-    return `<div class="timeline-item ${cls}">
-      <div style="font-size: 13px;font-weight:700;color:${isCurrent ? 'var(--cid-c)' : 'var(--text-muted)'};">
-        ${isOrigin ? '● ' : (isCurrent ? '★ 現行 ' : '')}${t.id}
-      </div>
-      <div style="font-size:13px;font-weight:${isCurrent ? '700' : '400'};">${t.period}</div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('subsc-detail-title').textContent = `サブスク詳細 — ${id}`;
-  document.getElementById('subsc-detail-body').innerHTML = `
-    <div style="margin-bottom:14px;">
-      <div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size: 13px;">企業：</span><strong>${d.company}</strong></div>
-      <div style="margin-bottom:6px;"><span style="color:var(--text-muted);font-size: 13px;">プラン：</span><strong>${d.plan}</strong></div>
-      <div><span style="color:var(--text-muted);font-size: 13px;">月額：</span><strong class="cid-c">¥${d.monthly.toLocaleString()}</strong>
-        <span style="margin-left:12px;color:var(--text-muted);font-size: 13px;">原価：</span><strong>¥${d.cost.toLocaleString()}</strong></div>
-    </div>
-    <div class="section-title">更新履歴タイムライン</div>
-    <div class="timeline">${timelineHtml}</div>`;
-  openModal('subsc-detail-modal');
-}
-
 // ===== サブスク更新モーダル =====
 let renewalCurrentId = '';
 let renewalNewSuffix = '';
@@ -2544,12 +2550,8 @@ document.addEventListener('keydown', e => {
 // =========================================================
 // 認証システム
 // =========================================================
-const MEMBERS_DB = [
-  { email: 'admin@m2m-datas.co.jp',   password: 'axis0120', name: '管理者 太郎',   phone: '052-000-0001', company: 'M2M-Datas株式会社',  role: 'admin', isInitialPw: true },
-  { email: 'hanako@m2m-datas.co.jp',  password: 'axis0120', name: '営業 花子',     phone: '052-000-0002', company: 'M2M-Datas株式会社',  role: 'user',  isInitialPw: true },
-  { email: 'jiro@m2m-datas.co.jp',    password: 'axis0120', name: '工事 次郎',     phone: '052-000-0003', company: 'M2M-Datas株式会社',  role: 'user',  isInitialPw: true },
-  { email: 'saburo@axis-cloud.co.jp', password: 'axis0120', name: 'システム 三郎', phone: '03-0000-0001', company: 'Axis Cloud株式会社', role: 'user',  isInitialPw: true }
-];
+// Supabase同期用のキャッシュ（renderMembersTable実行時に同期される）
+const MEMBERS_DB = [];
 
 // currentUser は app.html(<head>) が window.currentUser に設定する（一本化）
 let pwInitTargetEmail = '';
@@ -2660,17 +2662,31 @@ function confirmPasswordInit(email, name) {
   openModal('pw-init-modal');
 }
 
-function executePasswordInit() {
-  const member = MEMBERS_DB.find(m => m.email === pwInitTargetEmail);
-  if (member) {
-    member.password = 'axis0120';
-    member.isInitialPw = false; // 管理者が対応済み → 依頼フラグをクリア（次回ログイン時はpasswordチェックで強制変更）
+async function executePasswordInit() {
+  const email = pwInitTargetEmail;
+  if (!email) return;
+
+  const sb = window._sb;
+  if (!sb) return;
+
+  // is_initial_pw = true に更新（次回ログイン時に強制変更）
+  // 注: Authのパスワード自体を axis0120 に戻すには Admin API が必要なため
+  //     ここでは行わない。実運用では「管理者が axis0120 を口頭等で伝える」運用とする。
+  const { error } = await sb
+    .from('members')
+    .update({ is_initial_pw: true })
+    .eq('email', email);
+
+  if (error) {
+    alert('初期化エラー: ' + error.message);
+    return;
   }
+
   closeModal('pw-init-modal');
-  alert('✓ パスワードを初期化しました。\n次回ログイン時にパスワードの再設定が求められます。');
-  // メンバー一覧を再描画（ボタン表示をオレンジに更新）
-  renderMembersTable();
-  // PW初期化依頼通知バナーを更新（isInitialPwが増えた可能性）
+  alert('パスワード初期化依頼を登録しました。\n対象ユーザーは次回ログイン時に axis0120 でログインし、パスワード変更を求められます。');
+
+  // テーブル再描画＆通知バナー更新
+  await renderMembersTable('');
   updatePwResetNotification();
 }
 
@@ -2984,37 +3000,59 @@ function openPasswordResetModal() {
   openModal('modal-password-reset-request');
 }
 
-function submitPasswordResetRequest() {
-  const email = document.getElementById('pw-reset-req-email').value.trim();
+async function submitPasswordResetRequest() {
+  // 注: 実フォームのIDは pw-reset-req-* （指示書の reset-request-* ではない）
+  const emailEl = document.getElementById('pw-reset-req-email');
+  if (!emailEl) return;
+  const email = emailEl.value.trim();
   const errEl = document.getElementById('pw-reset-req-error');
-  const sucEl = document.getElementById('pw-reset-req-success');
-
-  errEl.style.display = 'none';
-  sucEl.style.display = 'none';
+  const msgEl = document.getElementById('pw-reset-req-success');
+  if (errEl) errEl.style.display = 'none';
+  if (msgEl) msgEl.style.display = 'none';
 
   if (!email) {
-    errEl.textContent = 'メールアドレスを入力してください。';
-    errEl.style.display = 'block';
+    if (errEl) { errEl.textContent = 'メールアドレスを入力してください'; errEl.style.display = 'block'; }
     return;
   }
 
-  const member = MEMBERS_DB.find(m => m.email === email);
+  const sb = window.supabaseClient || window._sb;
+  if (!sb) return;
+
+  // members から該当ユーザーを探す
+  const { data: member, error: selErr } = await sb
+    .from('members')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (selErr) {
+    if (errEl) { errEl.textContent = 'エラー: ' + selErr.message; errEl.style.display = 'block'; }
+    return;
+  }
+
   if (!member) {
-    errEl.textContent = 'このメールアドレスは登録されていません。';
-    errEl.style.display = 'block';
+    if (errEl) { errEl.textContent = '登録されていないメールアドレスです'; errEl.style.display = 'block'; }
     return;
   }
 
-  // パスワードを初期値にリセット
-  member.isInitialPw = true;
-  member.password = 'axis0120';
+  // is_initial_pw = true に更新（管理者の対応待ち）
+  const { error: upErr } = await sb
+    .from('members')
+    .update({ is_initial_pw: true })
+    .eq('email', email);
 
-  sucEl.textContent = '初期化依頼を受け付けました。管理者がリセットするまでしばらくお待ちください。';
-  sucEl.style.display = 'block';
+  if (upErr) {
+    if (errEl) { errEl.textContent = 'リクエストエラー: ' + upErr.message; errEl.style.display = 'block'; }
+    return;
+  }
+
+  if (msgEl) {
+    msgEl.textContent = '初期化依頼を受け付けました。管理者がリセットするまでしばらくお待ちください。';
+    msgEl.style.display = 'block';
+  }
 
   // PW初期化依頼通知バナーを更新（管理者がログイン中の場合に即時反映）
   updatePwResetNotification();
-
   setTimeout(() => closeModal('modal-password-reset-request'), 2500);
 }
 
