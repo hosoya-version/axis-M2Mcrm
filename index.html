@@ -151,7 +151,68 @@ async function doLogin() {
 }
 
 function openPasswordResetModal() {
-  alert('パスワードリセットについては管理者にお問い合わせください。');
+  document.getElementById('pw-reset-request-modal').style.display = 'flex';
+}
+function closePwResetRequestModal() {
+  document.getElementById('pw-reset-request-modal').style.display = 'none';
+  document.getElementById('pw-reset-req-email').value = '';
+  const errEl = document.getElementById('pw-reset-req-error');
+  const msgEl = document.getElementById('pw-reset-req-success');
+  if (errEl) errEl.style.display = 'none';
+  if (msgEl) msgEl.style.display = 'none';
+}
+
+// パスワードリセット依頼の送信（index.htmlはapp.jsを読み込まないため独自定義）
+async function submitPasswordResetRequest() {
+  const emailEl = document.getElementById('pw-reset-req-email');
+  if (!emailEl) return;
+  const email = emailEl.value.trim();
+  const errEl = document.getElementById('pw-reset-req-error');
+  const msgEl = document.getElementById('pw-reset-req-success');
+  if (errEl) errEl.style.display = 'none';
+  if (msgEl) msgEl.style.display = 'none';
+
+  if (!email) {
+    if (errEl) { errEl.textContent = 'メールアドレスを入力してください'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  if (!supabaseClient) {
+    if (errEl) { errEl.textContent = 'システム初期化中です。もう一度お試しください。'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  // members から該当ユーザーを探す
+  const { data: member, error: selErr } = await supabaseClient
+    .from('members')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (selErr) {
+    if (errEl) { errEl.textContent = 'エラー: ' + selErr.message; errEl.style.display = 'block'; }
+    return;
+  }
+  if (!member) {
+    if (errEl) { errEl.textContent = '登録されていないメールアドレスです'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  // is_initial_pw = true に更新（管理者の対応待ち）
+  const { error: upErr } = await supabaseClient
+    .from('members')
+    .update({ is_initial_pw: true })
+    .eq('email', email);
+
+  if (upErr) {
+    if (errEl) { errEl.textContent = 'リクエストエラー: ' + upErr.message; errEl.style.display = 'block'; }
+    return;
+  }
+
+  if (msgEl) {
+    msgEl.textContent = '初期化依頼を受け付けました。管理者がリセットするまでしばらくお待ちください。';
+    msgEl.style.display = 'block';
+  }
 }
 
 async function doPasswordReset() {
@@ -208,5 +269,26 @@ async function doPasswordReset() {
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- パスワードリセット依頼モーダル -->
+<div id="pw-reset-request-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10001;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:36px;width:100%;max-width:400px;box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px;color:#1a1a1a;">パスワードリセット依頼</div>
+    <div style="font-size:13px;color:#6b6b6b;margin-bottom:20px;line-height:1.6;">
+      登録済みのメールアドレスを入力してください。<br>
+      管理者がパスワードを初期化します。
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;color:#6b6b6b;display:block;margin-bottom:4px;">メールアドレス</label>
+      <input type="email" id="pw-reset-req-email" class="form-control" placeholder="your@email.com">
+    </div>
+    <div id="pw-reset-req-error" style="display:none;color:red;font-size:13px;margin-bottom:10px;"></div>
+    <div id="pw-reset-req-success" style="display:none;color:green;font-size:13px;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button onclick="closePwResetRequestModal()" style="padding:8px 18px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;">キャンセル</button>
+      <button onclick="submitPasswordResetRequest()" style="padding:8px 18px;border:none;border-radius:8px;background:#6B4F3A;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">依頼を送信</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
