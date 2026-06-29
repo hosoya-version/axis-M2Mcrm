@@ -449,6 +449,15 @@ async function loadContacts() {
     return;
   }
 
+  // 各担当者に紐づくアクシスID数を axis_ids.contact_id から集計
+  const { data: axisRows } = await sb.from('axis_ids').select('axis_id, contact_id');
+  const axisCountByContact = {};
+  (axisRows || []).forEach(a => {
+    if (a.contact_id != null) {
+      axisCountByContact[a.contact_id] = (axisCountByContact[a.contact_id] || 0) + 1;
+    }
+  });
+
   // app.js 内の他の関数から参照できるようにグローバルへ保存
   window.contactsData = data.map(c => ({
     id:           c.id,
@@ -472,7 +481,7 @@ async function loadContacts() {
     notes:        c.notes  ?? '',
     company_id:   c.company_id,
     branch_id:    c.branch_id,
-    axisIdCount:  0,
+    axisIdCount:  axisCountByContact[c.id] || 0,
   }));
 
   console.log(`担当者データ取得完了: ${window.contactsData.length}件`);
@@ -499,9 +508,38 @@ function renderContactTable(data) {
           ${contact.axisIdCount}件
         </span>
       </td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteContact('${contact.id}', '${(contact.name || '').replace(/'/g, "\\'")}')">
+          <i class="ti ti-trash"></i> 削除
+        </button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+// 担当者削除（紐づくアクシスID件数を確認のうえ削除）
+async function deleteContact(contactId, name) {
+  const sb = window._sb;
+  if (!sb) { alert('システム初期化中です。'); return; }
+
+  const { count } = await sb
+    .from('axis_ids')
+    .select('axis_id', { count: 'exact', head: true })
+    .eq('contact_id', contactId);
+
+  let msg = `「${name}」を削除しますか？`;
+  if (count && count > 0) {
+    msg += `\n\n⚠️ ${count}件のアクシスID（案件）に紐づいています。担当者を削除すると案件側の担当者参照が外れます。続行しますか？`;
+  }
+  if (!confirm(msg)) return;
+
+  const { error } = await sb.from('contacts').delete().eq('id', contactId);
+  if (error) { alert('削除失敗: ' + error.message); return; }
+
+  alert('削除しました');
+  await loadContacts();
+  applyContactFilter();
 }
 
 function jumpToAxisListFromContact(contactName) {
