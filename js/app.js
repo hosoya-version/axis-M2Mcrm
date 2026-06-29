@@ -2856,7 +2856,7 @@ async function saveMemberEdit() {
 
   // モーダルを閉じてテーブル再描画（実モーダルIDは member-edit-modal）
   closeModal('member-edit-modal');
-  renderMembersTable('');
+  await renderMembersTable('');
 }
 
 // =========================================================
@@ -2916,7 +2916,7 @@ async function executeDeleteMember() {
   }
 
   closeModal('member-delete-modal');
-  renderMembersTable('');
+  await renderMembersTable('');
 }
 
 // =========================================================
