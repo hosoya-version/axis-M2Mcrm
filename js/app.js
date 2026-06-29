@@ -1424,14 +1424,138 @@ function selectType(type) {
   checkStep1Next();
 }
 
+// ドロップゾーンのクリック → 隠しファイル入力を起動
 function handleFileUpload() {
-  if (selectedType !== 'pdf' && selectedType !== 'excel') return;
-  fileUploaded = true;
-  document.getElementById('file-dropzone').style.borderColor = 'var(--accent)';
-  document.getElementById('file-dropzone').style.backgroundColor = '#EEF4FB';
-  document.getElementById('file-dropzone').innerHTML = '<i class="ti ti-check" style="color:var(--accent);"></i><div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--accent);">ファイルがアップロードされました</div>';
-  document.getElementById('step1-form-container').style.display = 'block';
+  const input = document.getElementById('pdf-file-input');
+  if (input) input.click();
+}
+
+// PDF選択時：base64化 → Edge FunctionでAI解析 → Step1/Step2に反映
+async function onPdfFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (file.type !== 'application/pdf') {
+    alert('PDFファイルを選択してください');
+    event.target.value = '';
+    return;
+  }
+
+  const dz = document.getElementById('file-dropzone');
+  if (dz) {
+    dz.style.borderColor = 'var(--accent)';
+    dz.style.backgroundColor = '#EEF4FB';
+    dz.innerHTML = '<i class="ti ti-loader"></i><div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--accent);">アップロード中...</div>';
+  }
+
+  try {
+    const base64 = await fileToBase64(file);
+    fileUploaded = true;
+    if (dz) {
+      dz.innerHTML = '<i class="ti ti-file-type-pdf" style="color:var(--accent);"></i>'
+        + '<div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--accent);">'
+        + escapeHtml(file.name) + ' をアップロードしました</div>';
+    }
+    document.getElementById('step1-form-container').style.display = 'block';
+    validateStep1();
+    await analyzePdf(base64);
+  } catch (e) {
+    console.error('PDF読み込みエラー:', e);
+    if (dz) dz.innerHTML = '<div style="color:red;font-size:14px;">PDFの読み込みに失敗しました</div>';
+  }
+}
+
+// FileをDataURL経由でbase64（dataプレフィックス無し）に変換
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('read error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Edge Function「extract-pdf」を呼び出してAI解析
+async function analyzePdf(base64) {
+  const sb = window._sb;
+  const tbody = document.getElementById('step2-extract-tbody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:14px;text-align:center;color:var(--text-muted);">AIが申込書を解析中...</td></tr>';
+  }
+  try {
+    if (!sb || !sb.functions) throw new Error('Supabaseクライアントが利用できません');
+    const { data, error } = await sb.functions.invoke('extract-pdf', {
+      body: { pdfBase64: base64 }
+    });
+    if (error) throw error;
+    if (!data || !data.extraction) {
+      throw new Error((data && data.error) || '抽出結果が取得できませんでした');
+    }
+    applyExtraction(data.extraction);
+  } catch (e) {
+    console.error('PDF解析エラー:', e);
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="4" style="padding:14px;text-align:center;color:red;">解析に失敗しました: '
+        + escapeHtml(e.message || String(e)) + '</td></tr>';
+    }
+  }
+}
+
+// 抽出結果をStep1フォーム（手修正用）とStep2読み取り結果テーブルに反映
+function applyExtraction(ex) {
+  const fld = (k) => (ex && ex[k] && typeof ex[k] === 'object') ? ex[k] : { value: '', confidence: 0 };
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+
+  setVal('s1-company',      fld('company_name').value);
+  setVal('s1-company-kana', fld('company_name_kana').value);
+  setVal('s1-name',         fld('contact_name').value);
+  setVal('s1-tel',          fld('tel').value);
+  setVal('s1-mobile',       fld('fax').value);   // FAX欄
+  setVal('s1-address',      fld('address').value);
+  setVal('s1-email',        fld('email').value);
+  setVal('s1-dept',         fld('department').value);
   validateStep1();
+
+  renderExtractionTable(ex);
+}
+
+// Step2「申込書読み取り結果」テーブルを実APIレスポンスで描画
+function renderExtractionTable(ex) {
+  const tbody = document.getElementById('step2-extract-tbody');
+  if (!tbody) return;
+  const rows = [
+    ['会社名', 'company_name'],
+    ['フリガナ', 'company_name_kana'],
+    ['担当者名', 'contact_name'],
+    ['部署名', 'department'],
+    ['TEL', 'tel'],
+    ['FAX', 'fax'],
+    ['住所', 'address'],
+    ['E-mail', 'email'],
+  ];
+  tbody.innerHTML = rows.map(([label, key]) => {
+    const f = (ex && ex[key] && typeof ex[key] === 'object') ? ex[key] : { value: '', confidence: 0 };
+    const conf = Math.max(0, Math.min(100, parseInt(f.confidence, 10) || 0));
+    const cls = conf >= 85 ? 'high' : (conf >= 60 ? 'mid' : '');
+    const pctStyle = conf >= 85 ? '' : ' style="color:#854F0B;"';
+    const valDisp = f.value ? escapeHtml(f.value) : '<span class="text-muted">—</span>';
+    return '<tr>'
+      + '<td>' + label + '</td>'
+      + '<td class="fw-700">' + valDisp + '</td>'
+      + '<td><span class="src-pdf">PDF</span></td>'
+      + '<td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill ' + cls + '" style="width:' + conf + '%"></div></div>'
+      + '<span class="confidence-pct"' + pctStyle + '>' + conf + '%</span></div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function validateStep1() {

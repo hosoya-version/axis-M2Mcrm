@@ -981,6 +981,7 @@
         <i class="ti ti-cloud-upload"></i>
         <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ここをクリックしてファイルをアップロード</div>
       </div>
+      <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none;" onchange="onPdfFileSelected(event)">
 
             <div id="step1-form-container" style="display:none;margin-top:20px;border:1px solid var(--border);padding:20px;border-radius:8px;background:#fff;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
@@ -1161,7 +1162,7 @@
           <thead>
             <tr><th>フィールド</th><th>読み取り値</th><th>ソース</th><th>信頼度</th></tr>
           </thead>
-          <tbody>
+          <tbody id="step2-extract-tbody">
             <tr>
               <td>会社名</td>
               <td class="fw-700">オムロン ソーシアルソリューションズ株式会社</td>
