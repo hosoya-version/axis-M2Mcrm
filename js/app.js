@@ -1786,6 +1786,12 @@ async function analyzePdf(base64) {
     if (!data || !data.extraction) {
       throw new Error((data && data.error) || '抽出結果が取得できませんでした');
     }
+    // №7: 既存企業マッチング結果を保持（Step2の候補表示に利用可能）
+    window._companyMatches = Array.isArray(data.company_matches) ? data.company_matches : [];
+    if (window._companyMatches.length > 0) {
+      console.log('[企業マッチング候補]', window._companyMatches);
+    }
+    renderCompanyMatches(window._companyMatches);
     applyExtraction(data.extraction);
   } catch (e) {
     console.error('PDF解析エラー:', e);
@@ -1954,6 +1960,51 @@ async function searchCompanyCandidates() {
 
   window._wizardCandidates = data || [];
   renderCompanyCandidates(companyName);
+}
+
+// №7: AIによる既存企業マッチング候補をStep2にスコアバー付きで表示。
+// matches: [{company_id, company_name, score, reason}]
+function getScoreColor(score) {
+  if (score >= 90) return '#22c55e';  // 緑
+  if (score >= 70) return '#eab308';  // 黄
+  return '#f97316';                   // 橙
+}
+
+function renderCompanyMatches(matches) {
+  const container = document.getElementById('company-candidates-container');
+  if (!container) return;
+  if (!Array.isArray(matches) || matches.length === 0) return;
+
+  // 選択できるよう _wizardCandidates にも反映（id と company_name を保持）
+  window._wizardCandidates = matches.map(m => ({
+    id: m.company_id,
+    company_name: m.company_name
+  }));
+
+  let html = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">AIが既存企業との類似度を判定しました。該当があれば選択してください。</div>';
+  matches.forEach((m, i) => {
+    const score = Math.max(0, Math.min(100, parseInt(m.score, 10) || 0));
+    html += `
+      <div class="candidate-card" id="cand-db-${i}" onclick="selectCompanyCandidate('db', ${i})">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden;">
+            <div style="width:${score}%;height:100%;background:${getScoreColor(score)};"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${getScoreColor(score)};">${score}%</span>
+        </div>
+        <div class="candidate-name">${m.company_name || ''}</div>
+        <div class="candidate-detail">${m.reason || ''}</div>
+      </div>`;
+  });
+  html += `
+    <div class="candidate-card new" id="cand-new" onclick="selectCompanyCandidate('new', -1)">
+      <div class="candidate-match" style="color:var(--text-muted);">○ 新規企業として登録</div>
+      <div class="candidate-detail">候補に該当が無ければ新規登録します</div>
+    </div>`;
+
+  container.innerHTML = html;
+  document.getElementById('step2-next')?.classList.add('btn-disabled');
+  selectedCandidate = null;
 }
 
 function renderCompanyCandidates(inputName) {

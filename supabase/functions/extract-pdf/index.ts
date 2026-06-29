@@ -37,6 +37,78 @@ function parseFirstJsonObject(text: string): unknown | null {
   }
 }
 
+// テキストのみのプロンプトで Claude を呼び出し、本文テキストを返す
+async function callClaudeText(prompt: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY as string,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 1024,
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+    }),
+  });
+  if (!res.ok) return "";
+  const data = await res.json();
+  const block = Array.isArray(data?.content)
+    ? data.content.find((b: { type?: string }) => b?.type === "text")
+    : null;
+  return block?.text ?? "";
+}
+
+// 抽出した会社名と既存DBの企業を Claude で類似度判定（№7）。
+// 失敗しても本体の抽出結果を壊さないよう、呼び出し側で try/catch する。
+async function matchExistingCompanies(
+  extractedName: string,
+  extractedAddress: string,
+): Promise<unknown[]> {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_URL || !SERVICE_ROLE || !extractedName) return [];
+
+  // 既存企業リストを service_role で取得
+  const listRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/companies?select=id,company_name,address`,
+    { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } },
+  );
+  if (!listRes.ok) return [];
+  const existing = await listRes.json();
+  if (!Array.isArray(existing) || existing.length === 0) return [];
+
+  const matchPrompt = `以下の抽出企業名と、既存DBの企業名リストを比較し、類似度をスコア化してください。
+
+抽出企業名: "${extractedName}"
+抽出住所: "${extractedAddress || ""}"
+
+既存企業リスト:
+${existing.map((c: { company_name?: string; address?: string }, i: number) =>
+  `${i + 1}. ${c.company_name} (住所: ${c.address || "未登録"})`).join("\n")}
+
+以下のJSON形式で、類似度スコア50%以上の候補のみ返してください（説明文やコードフェンスは付けない）：
+{"matches":[{"company_id":"...","company_name":"...","score":95,"reason":"企業名完全一致"}]}
+
+判定基準：
+- 100: 完全一致
+- 80-99: 表記揺れ（株式会社の有無、空白差）
+- 50-79: 部分一致または住所一致
+- 50未満: 候補から除外`;
+
+  const resp = await callClaudeText(matchPrompt);
+  const parsed = parseFirstJsonObject(resp) as { matches?: unknown[] } | null;
+  // company_id を既存リストの実IDに補正（名前一致で引き当て）
+  const matches = Array.isArray(parsed?.matches) ? parsed!.matches : [];
+  return matches.map((m) => {
+    const mm = m as { company_name?: string; company_id?: string };
+    const hit = existing.find((c: { id?: string; company_name?: string }) =>
+      c.company_name === mm.company_name);
+    return { ...mm, company_id: hit?.id ?? mm.company_id ?? null };
+  });
+}
+
 const EXTRACTION_PROMPT = `あなたは日本語の申込書・発注書PDFから情報を正確に抽出するアシスタントです。
 添付PDFから以下の項目を抽出し、JSONオブジェクトのみを返してください（前後に説明文やコードフェンスを付けない）。
 
@@ -172,7 +244,23 @@ Deno.serve(async (req: Request) => {
     if (!extraction) {
       return json({ error: "抽出結果をJSONとして解析できませんでした", raw }, 502);
     }
-    return json({ extraction, model: MODEL }, 200);
+
+    // №7: 既存企業との類似度判定（失敗しても抽出結果は返す）
+    let company_matches: unknown[] = [];
+    try {
+      const ex = extraction as {
+        company_name?: { value?: string };
+        address?: { value?: string };
+      };
+      company_matches = await matchExistingCompanies(
+        ex?.company_name?.value ?? "",
+        ex?.address?.value ?? "",
+      );
+    } catch (_e) {
+      company_matches = [];
+    }
+
+    return json({ extraction, company_matches, model: MODEL }, 200);
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
