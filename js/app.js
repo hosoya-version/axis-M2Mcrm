@@ -1095,13 +1095,19 @@ async function renderAgencyTable() {
   if (!tbody) return;
   const agencies = await loadAgencies();
   const rows = agencies.map(a => {
+    const safeName = (a.agency_name || '').replace(/'/g, "\\'");
     return `<tr>
       <td>${a.agency_name || ''}</td>
       <td>${a.agency_name_kana || ''}</td>
-      <td>${a.postal_code || ''}</td>
-      <td>${a.address || ''}</td>
       <td>${a.phone || ''}</td>
+      <td>—</td>
+      <td>${a.address || ''}</td>
       <td>${a.notes || ''}</td>
+      <td>—</td>
+      <td>
+        <button class="btn btn-sm btn-secondary" onclick="openAgencyEditModal('${a.id}')">編集</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAgency('${a.id}', '${safeName}')">削除</button>
+      </td>
     </tr>`;
   });
   tbody.innerHTML = rows.join('');
@@ -1238,16 +1244,24 @@ function openAgencyModal() {
   openModal('agency-modal');
 }
 
-function openAgencyEditModal(agencyId) {
-  const agency = agenciesData.find(a => a.id === agencyId);
-  if (!agency) return;
+async function openAgencyEditModal(agencyId) {
+  const sb = window._sb;
+  if (!sb) { alert('システム初期化中です。'); return; }
+
+  // Supabase から対象の代理店を取得（旧コードは未同期の agenciesData を参照して失敗していた）
+  const { data: agency, error } = await sb
+    .from('agencies')
+    .select('*')
+    .eq('id', agencyId)
+    .single();
+  if (error || !agency) { alert('代理店の取得に失敗しました: ' + (error?.message || '該当なし')); return; }
 
   document.getElementById('agency-modal-title').textContent = '代理店 編集';
   document.getElementById('agency-edit-id').value = agency.id;
-  document.getElementById('agency-name').value = agency.name || '';
-  document.getElementById('agency-furigana').value = agency.furigana || '';
-  document.getElementById('agency-tel').value = agency.tel || '';
-  document.getElementById('agency-email').value = agency.email || '';
+  document.getElementById('agency-name').value = agency.agency_name || '';
+  document.getElementById('agency-furigana').value = agency.agency_name_kana || '';
+  document.getElementById('agency-tel').value = agency.phone || '';
+  document.getElementById('agency-email').value = '';
   document.getElementById('agency-address').value = agency.address || '';
 
   // 企業入力欄をリセットして既存データを再生成
@@ -1355,11 +1369,14 @@ async function saveAgency() {
   await renderAgencyTable();
 }
 
-function deleteAgency(id) {
-  if (confirm('この代理店を削除してもよろしいですか？')) {
-    agenciesData = agenciesData.filter(a => a.id !== id);
-    renderAgencyTable();
-  }
+async function deleteAgency(id, name) {
+  if (!confirm(`代理店「${name || ''}」を削除してもよろしいですか？`)) return;
+  const sb = window._sb;
+  if (!sb) { alert('システム初期化中です。'); return; }
+  const { error } = await sb.from('agencies').delete().eq('id', id);
+  if (error) { alert('削除失敗: ' + error.message); return; }
+  alert('削除しました');
+  await renderAgencyTable();
 }
 
 // ===== 価格履歴（商品マスタ画面ボタン） =====
