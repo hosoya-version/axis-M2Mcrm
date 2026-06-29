@@ -10,18 +10,7 @@
  *   枝番A02: 同一申込書への追加発注時のみ発行
  */
 
-// ===== 商品マスタ：モックデータ =====
-let productsData = [
-  { id: 1, code: 'PRD-001', name: 'LANケーブル Cat6',     unit: '本',   category: 'A機器', categoryClass: 'a', price: 1200,   cost: 480,    priceHistory: [] },
-  { id: 2, code: 'PRD-002', name: 'M2Mセット 1式',         unit: '式',   category: 'A機器', categoryClass: 'a', price: 98000,  cost: 64000,  priceHistory: [] },
-  { id: 3, code: 'PRD-003', name: '絶縁監視装置 AZ100', unit: '台',   category: 'A機器', categoryClass: 'a', price: 48700,  cost: 31600,  priceHistory: [] },
-  { id: 4, code: 'PRD-099', name: '固定ネジセット M3×10', unit: '袋',   category: 'A機器', categoryClass: 'a', price: 3800,   cost: 1500,   priceHistory: [] },
-  { id: 5, code: 'SVC-001', name: '配線工事（基本）',  unit: '式',   category: 'B工事', categoryClass: 'b', price: 400000, cost: 220000, priceHistory: [] },
-  { id: 6, code: 'SVC-002', name: '基礎工事',           unit: '式',   category: 'B工事', categoryClass: 'b', price: 200000, cost: 130000, priceHistory: [] },
-  { id: 7, code: 'SUB-001', name: 'スタンダードプラン',   unit: '月',   category: 'Cサブスク', categoryClass: 'c', price: 48000,  cost: 15000,  priceHistory: [] },
-  { id: 8, code: 'SUB-002', name: 'プレミアムプラン',   unit: '月',   category: 'Cサブスク', categoryClass: 'c', price: 120000, cost: 38000,  priceHistory: [] },
-  { id: 9, code: 'SUB-003', name: 'LTE絶縁監視サービス', unit: '月/台', category: 'Cサブスク', categoryClass: 'c', price: 600,    cost: 200,    priceHistory: [] },
-];
+
 
 // ===== ダミーデータ定義 =====
 const priceHistoryData = {
@@ -243,6 +232,8 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
       });
     } else if (item.dataset.page === 'agencies') {
       renderAgencyTable();
+    } else if (item.dataset.page === 'products') {
+      renderProductTable();
     } else if (item.dataset.page === 'orders') {
       initOrderFilter();
       applyOrderFilter();
@@ -1131,37 +1122,37 @@ function openPriceHistory(code) {
   openModal('price-history-modal');
 }
 
-// ===== 商品マスタ：テーブル描画 =====
-function renderProductTable() {
+// ===== 商品マスタ =====
+async function loadProducts() {
+  const { data, error } = await window._sb
+    .from('products')
+    .select('*')
+    .order('product_code', { ascending: true });
+
+  if (error) {
+    console.error('products取得エラー:', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function renderProductTable() {
   const tbody = document.getElementById('product-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '';
-  productsData.forEach(p => {
-    const margin = p.price > 0 ? Math.round((1 - p.cost / p.price) * 100) : 0;
-    const marginBadge = margin >= 50 ? 'badge-green' : margin >= 35 ? 'badge-blue' : 'badge-yellow';
-    const catTag = `tag-${p.categoryClass}`;
-    const cidClass = `cid-${p.categoryClass}`;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="${cidClass}">${p.code}</td>
-      <td>${p.name}</td>
-      <td>${p.unit}</td>
-      <td><span class="tag ${catTag}">${p.category}</span></td>
-      <td>¥${p.price.toLocaleString()}</td>
-      <td>¥${p.cost.toLocaleString()}</td>
-      <td><span class="badge ${marginBadge}">${margin}%</span></td>
-      <td style="display:flex;gap:6px;">
-        <button class="btn btn-sm btn-secondary" onclick="openPriceHistory('${p.code}')">
-          <i class="ti ti-history"></i> 価格履歴
-        </button>
-        <button class="btn-edit" onclick="openProductEditModal(${p.id})"
-          style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">
-          編集
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
+  const productsData = await loadProducts();
+  const rows = productsData.map(p => {
+    return `<tr>
+      <td>${p.product_code || ''}</td>
+      <td>${p.product_name || ''}</td>
+      <td>${p.unit || ''}</td>
+      <td>${p.unit_price != null ? p.unit_price.toLocaleString() : ''}</td>
+      <td>${p.cost_price != null ? p.cost_price.toLocaleString() : ''}</td>
+      <td>${p.category || ''}</td>
+      <td>${p.is_active ? '有効' : '無効'}</td>
+      <td>${p.notes || ''}</td>
+    </tr>`;
   });
+  tbody.innerHTML = rows.join('');
 }
 
 // ===== 商品マスタ：編集モーダル =====
