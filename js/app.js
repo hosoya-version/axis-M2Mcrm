@@ -273,9 +273,61 @@ function renderCompanyTable(data) {
           <i class="ti ti-users"></i> ${company.contactCount}名
         </button>
       </td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}', '${(company.name || '').replace(/'/g, "\\'")}')">
+          <i class="ti ti-trash"></i> 削除
+        </button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+// 企業削除（紐づく axis_ids・子テーブル・contacts・branches をカスケード削除）
+async function deleteCompany(companyId, companyName) {
+  const sb = window._sb;
+  if (!sb) { alert('システム初期化中です。'); return; }
+
+  // 紐づくデータの件数確認
+  const { data: branches }  = await sb.from('branches').select('id').eq('company_id', companyId);
+  const { data: contacts }  = await sb.from('contacts').select('id').eq('company_id', companyId);
+  const { data: axisRows }  = await sb.from('axis_ids').select('axis_id').eq('company_id', companyId);
+
+  const counts = [];
+  if (branches?.length) counts.push(`拠点 ${branches.length}件`);
+  if (contacts?.length) counts.push(`担当者 ${contacts.length}件`);
+  if (axisRows?.length) counts.push(`アクシスID ${axisRows.length}件`);
+
+  let confirmMsg = `「${companyName}」を削除しますか？`;
+  if (counts.length > 0) {
+    confirmMsg += `\n\n⚠️ この企業には以下のデータが紐づいています：\n${counts.join('\n')}\n\nすべて連動して削除されます。本当に削除しますか？`;
+  }
+  if (!confirm(confirmMsg)) return;
+
+  // カスケード削除：アクシスID配下の子テーブル → axis_ids → contacts → branches → companies
+  const axisIds = (axisRows || []).map(a => a.axis_id);
+  if (axisIds.length > 0) {
+    for (const table of ['sales_a', 'construction_b', 'service_c']) {
+      const { error } = await sb.from(table).delete().in('axis_id', axisIds);
+      if (error) { alert(`${table} の削除に失敗: ` + error.message); return; }
+    }
+    const { error: axErr } = await sb.from('axis_ids').delete().eq('company_id', companyId);
+    if (axErr) { alert('axis_ids の削除に失敗: ' + axErr.message); return; }
+  }
+  if (contacts?.length) {
+    const { error } = await sb.from('contacts').delete().eq('company_id', companyId);
+    if (error) { alert('contacts の削除に失敗: ' + error.message); return; }
+  }
+  if (branches?.length) {
+    const { error } = await sb.from('branches').delete().eq('company_id', companyId);
+    if (error) { alert('branches の削除に失敗: ' + error.message); return; }
+  }
+
+  const { error } = await sb.from('companies').delete().eq('id', companyId);
+  if (error) { alert('削除に失敗しました: ' + error.message); return; }
+
+  alert('削除しました');
+  await loadCompanies();   // 一覧再読み込み（集計含む）
 }
 
 function jumpToAxisList(companyName) {
