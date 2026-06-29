@@ -45,120 +45,12 @@ const priceHistoryData = {
   ]
 };
 
-let salesAData = [
-  {
-    id: 1, axisId: '20260614002A01', company: 'オムロンSS', status: '処理中',
-    items: [
-      { name: '絶縁監視装置 AZ100 標準セット', code: 'OSSAZ100A2_O_CP', qty: '1台', unit: 48700, sub: 48700, cost: 31000 },
-      { name: '位相設定用ケーブル 4m', code: 'OSSVREFCBLA', qty: '1本', unit: 13000, sub: 13000, cost: 9000 },
-      { name: '電源ケーブル 1.5m', code: 'OSSPWRCBLC', qty: '1本', unit: 1000, sub: 1000, cost: 800 }
-    ],
-    deliveryDate: null, delivery: '未設定', billingStatus: '未請求', invoice: '未請求', attachments: []
-  },
-  {
-    id: 2, axisId: '20260614001A01', company: 'NTT東日本', status: '処理中',
-    items: [
-      { name: 'M2Mセット 1式', code: 'PRD-002', qty: '1式', unit: 98000, sub: 98000, cost: 39000 },
-      { name: 'LANケーブル Cat6', code: 'PRD-001', qty: '0本', unit: 0, sub: 0, cost: 0 }
-    ],
-    deliveryDate: null, delivery: '未設定', billingStatus: '未請求', invoice: '未請求', attachments: []
-  },
-  {
-    id: 3, axisId: '20260610001A01', company: 'テスト工業', status: '納品済',
-    items: [
-      { name: '絶縁監視装置 AZ100', code: 'PRD-003', qty: '3台', unit: 48700, sub: 146100, cost: 93000 },
-      { name: 'M2Mセット 1式', code: 'PRD-002', qty: '1式', unit: 98000, sub: 98000, cost: 39000 },
-      { name: '配線工事（追加品）', code: 'SVC-001x', qty: '1式', unit: 485900, sub: 485900, cost: 288000 }
-    ],
-    deliveryDate: '2026-06-10', delivery: '2026/06/10', billingStatus: '入金済', invoice: '¥730,000 請求済',
-    attachments: [
-      { name: '納品書_20260610.pdf', size: '245 KB', uploadedAt: '2026-06-10 14:22', uploader: '管理者 太郎' }
-    ]
-  },
-  {
-    id: 4, axisId: '20260610001A02', company: 'テスト工業', status: '納品済',
-    items: [
-      { name: '固定ネジセット M3×10（追加）', code: 'PRD-099', qty: '64袋', unit: 3800, sub: 240000, cost: 96000 }
-    ],
-    deliveryDate: '2026-06-12', delivery: '2026/06/12', billingStatus: '請求済', invoice: '¥240,000 請求済', attachments: []
-  }
-];
-
-const salesADataByKey = {};
-function buildSalesADataByKey() {
-  salesAData.forEach(d => { salesADataByKey[d.axisId] = d; });
-}
-buildSalesADataByKey();
-
-const salesBData = {
-  '20260614001B01': {
-    company: 'NTT東日本', name: '名古屋 設備工事', status: '施工中',
-    items: [
-      { name: '基礎工事', desc: '基盤整備・アンカー設置', qty: '1式', sell: 200000, cost: 130000 },
-      { name: '配線工事', desc: 'LANケーブル敷設100m', qty: '1式', sell: 400000, cost: 220000 },
-      { name: '仕上げ・検査', desc: '動作確認・養生撤去', qty: '1式', sell: 200000, cost: 110000 }
-    ]
-  },
-  '20260610001B01': {
-    company: 'テスト工業', name: '大阪 更新工事', status: '完了・未請求',
-    items: [
-      { name: '基礎工事', desc: '既設撤去・基盤整備', qty: '1式', sell: 600000, cost: 350000 },
-      { name: '配線工事', desc: '新設配線・接続試験', qty: '1式', sell: 600000, cost: 350000 }
-    ]
-  },
-  '20251101001B01': {
-    company: 'NTT東日本（埼玉）', name: '埼玉 メンテ', status: '完了・請求済',
-    items: [
-      { name: '定期メンテナンス', desc: '動作確認・清掃・消耗品交換', qty: '1式', sell: 450000, cost: 260000 }
-    ]
-  }
-};
-
-const subscData = {
-  '20240901001C03': {
-    company: 'NTT東日本', plan: 'プレミアムプラン',
-    monthly: 120000, cost: 38000,
-    timeline: [
-      { id: 'C03', period: '2026/09〜2027/08', status: 'current' },
-      { id: 'C02', period: '2025/09〜2026/08', status: 'ended' },
-      { id: 'C01', period: '2024/09〜2025/08', status: 'ended' },
-      { id: '申込', period: '2024/09/01 申込書受付（初回）', status: 'origin' }
-    ]
-  },
-  '20260601001C01': {
-    company: 'サブスク商事', plan: 'スタンダードプラン',
-    monthly: 48000, cost: 15000,
-    timeline: [
-      { id: 'C01', period: '2026/07〜2027/06', status: 'current' },
-      { id: '申込', period: '2026/06/01 申込書受付（初回）', status: 'origin' }
-    ]
-  },
-  '20251101001C02': {
-    company: 'NTT東日本（埼玉）', plan: 'ライトプラン',
-    monthly: 18000, cost: 6000,
-    timeline: [
-      { id: 'C02', period: '2026/11〜2027/10', status: 'current' },
-      { id: 'C01', period: '2025/11〜2026/10', status: 'ended' },
-      { id: '申込', period: '2025/11/01 申込書受付（初回）', status: 'origin' }
-    ]
-  },
-  '20260614001C01': {
-    company: 'NTT東日本（名古屋）', plan: 'プレミアムプラン',
-    monthly: 120000, cost: 38000,
-    timeline: [
-      { id: 'C01', period: '2026/07〜2027/06（課金前）', status: 'current' },
-      { id: '申込', period: '2026/06/14 申込書受付（初回）', status: 'origin' }
-    ]
-  },
-  '20260614002C01': {
-    company: 'オムロンSS', plan: 'LTE絶縁監視サービス',
-    monthly: 600, cost: 200,
-    timeline: [
-      { id: 'C01', period: '2025/08〜2026/07', status: 'current' },
-      { id: '申込', period: '2026/06/14 申込書受付（初回）', status: 'origin' }
-    ]
-  }
-};
+// 案件管理データ（Supabase連携）
+window.ordersData = [];
+window.salesAData = [];
+window.salesADataByKey = {};
+window.salesBData = {};
+window.subscData = {};
 
 const PRODUCT_MASTER = [
   { code: 'OSSAZ100A2_O_CP', name: '絶縁監視装置 AZ100 標準セット', price: 48700 },
@@ -235,8 +127,10 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
     } else if (item.dataset.page === 'products') {
       renderProductTable();
     } else if (item.dataset.page === 'orders') {
-      initOrderFilter();
-      applyOrderFilter();
+      loadOrders().then(() => {
+        initOrderFilter();
+        applyOrderFilter();
+      });
     } else if (item.dataset.page === 'temp-products') {
       renderTempProductTable();
     }
@@ -245,13 +139,13 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
 
 // 初回ロード時の初期化
 document.addEventListener('DOMContentLoaded', () => {
+  loadOrders();
   applyCompanyFilter();
   initContactFilter();
   applyContactFilter();
   renderAgencyTable();
   renderProductTable();
   renderTempProductTable();
-  buildSalesADataByKey();
   renderSalesATable();
   initOrderFilter();
   applyOrderFilter();
@@ -525,177 +419,250 @@ function jumpToAxisListFromContact(contactName) {
 }
 
 // ===== 案件管理（アクシスID）一覧：モックデータ＆処理 =====
-const ordersData = [
-  // === オムロンSS株式会社 9件 ===
-  {
-    pid: '20260614002',
-    company: 'オムロンSS株式会社',
-    branch: '東京本社',
-    contact: '山田 健太',
-    date: '2026/06/14',
-    types: ['A', 'C'],
-    branchCountText: '2件',
-    children: [
-      { cid: '20260614002A01', tag: 'a', desc: '機器販売　絶縁監視装置AZ100 3品 / ¥62,700', target: 'sales-a' },
-      { cid: '20260614002C01', tag: 'c', desc: 'サブスク　LTE絶縁監視サービス ¥600/月', target: 'sales-c' }
-    ]
-  },
-  {
-    pid: '20260612001',
-    company: 'オムロンSS株式会社',
-    branch: '東京本社',
-    contact: '佐藤 一郎',
-    date: '2026/06/12',
-    types: ['A'],
-    branchCountText: '1件',
-    children: [
-      { cid: '20260612001A01', tag: 'a', desc: '機器販売　太陽光センサーBOX 5台 / ¥150,000', target: 'sales-a' }
-    ]
-  },
-  {
-    pid: '20260608003',
-    company: 'オムロンSS株式会社',
-    branch: '関西支店',
-    contact: '田中 美咲',
-    date: '2026/06/08',
-    types: ['B', 'C'],
-    branchCountText: '2件',
-    children: [
-      { cid: '20260608003B01', tag: 'b', desc: '工事　工場内通信配線工事 / ¥450,000', target: 'sales-b' },
-      { cid: '20260608003C01', tag: 'c', desc: 'サブスク　クラウド稼働監視パック ¥12,000/月', target: 'sales-c' }
-    ]
-  },
-  {
-    pid: '20260528001',
-    company: 'オムロンSS株式会社',
-    branch: '名古屋営業所',
-    contact: '山田 健太',
-    date: '2026/05/28',
-    types: ['A', 'B'],
-    branchCountText: '2件',
-    children: [
-      { cid: '20260528001A01', tag: 'a', desc: '機器販売　電力モニタKM50 10台 / ¥280,000', target: 'sales-a' },
-      { cid: '20260528001B01', tag: 'b', desc: '工事　盤内取付工事 / ¥180,000', target: 'sales-b' }
-    ]
-  },
-  {
-    pid: '20260515002',
-    company: 'オムロンSS株式会社',
-    branch: '東京本社',
-    contact: '佐藤 一郎',
-    date: '2026/05/15',
-    types: ['C'],
-    branchCountText: '1件',
-    children: [
-      { cid: '20260515002C01', tag: 'c', desc: 'サブスク　エネルギー分析AIサービス ¥30,000/月', target: 'sales-c' }
-    ]
-  },
-  {
-    pid: '20260420001',
-    company: 'オムロンSS株式会社',
-    branch: '九州支店',
-    contact: '田中 美咲',
-    date: '2026/04/20',
-    types: ['A'],
-    branchCountText: '1件',
-    children: [
-      { cid: '20260420001A01', tag: 'a', desc: '機器販売　環境センサーゲートウェイ 2台 / ¥90,000', target: 'sales-a' }
-    ]
-  },
-  {
-    pid: '20260405004',
-    company: 'オムロンSS株式会社',
-    branch: '東京本社',
-    contact: '山田 健太',
-    date: '2026/04/05',
-    types: ['B'],
-    branchCountText: '1件',
-    children: [
-      { cid: '20260405004B01', tag: 'b', desc: '工事　EMSシステム導入設定工事 / ¥600,000', target: 'sales-b' }
-    ]
-  },
-  {
-    pid: '20260318002',
-    company: 'オムロンSS株式会社',
-    branch: '東北支店',
-    contact: '佐藤 一郎',
-    date: '2026/03/18',
-    types: ['A', 'C'],
-    branchCountText: '2件',
-    children: [
-      { cid: '20260318002A01', tag: 'a', desc: '機器販売　通信ユニット 4台 / ¥80,000', target: 'sales-a' },
-      { cid: '20260318002C01', tag: 'c', desc: 'サブスク　リモートメンテパック ¥8,000/月', target: 'sales-c' }
-    ]
-  },
-  {
-    pid: '20260210001',
-    company: 'オムロンSS株式会社',
-    branch: '東京本社',
-    contact: '山田 健太',
-    date: '2026/02/10',
-    types: ['C'],
-    branchCountText: '1件',
-    children: [
-      { cid: '20260210001C01', tag: 'c', desc: 'サブスク　設備予知保全プラットフォーム ¥50,000/月', target: 'sales-c' }
-    ]
-  },
+// ===== 案件管理 Supabase連携 =====
+async function loadOrders() {
+  const sb = window._sb;
+  if (!sb) return;
 
-  // === 他企業のデータ（既存内容の維持・拡張） ===
-  {
-    pid: '20260614001',
-    company: 'NTT東日本株式会社',
-    branch: '名古屋支店',
-    contact: '斎藤 健一',
-    date: '2026/06/14',
-    types: ['A', 'B', 'C'],
-    branchCountText: '3件',
-    children: [
-      { cid: '20260614001A01', tag: 'a', desc: '機器販売　M2Mセット 2品 / ¥98,000', target: 'sales-a' },
-      { cid: '20260614001B01', tag: 'b', desc: '工事　名古屋 設備工事 ¥800,000', target: 'sales-b' },
-      { cid: '20260614001C01', tag: 'c', desc: 'サブスク　プレミアムプラン ¥120,000/月', target: 'sales-c' }
-    ]
-  },
-  {
-    pid: '20260610001',
-    company: 'テスト工業株式会社',
-    branch: '本社',
-    contact: '鈴木 太郎',
-    date: '2026/06/10',
-    types: ['A', 'B'],
-    branchCountText: '3件',
-    children: [
-      { cid: '20260610001A01', tag: 'a', desc: '機器販売　3品 / ¥730,000', target: 'sales-a' },
-      { cid: '20260610001A02', tag: 'a', desc: '機器販売（追加発注）　1品 / ¥240,000', target: 'sales-a' },
-      { cid: '20260610001B01', tag: 'b', desc: '工事　大阪 更新工事 ¥1,200,000', target: 'sales-b' }
-    ]
-  },
-  {
-    pid: '20260601001',
-    company: 'サブスク商事株式会社',
-    branch: '本社',
-    contact: '田中 花子',
-    date: '2026/06/01',
-    types: ['C'],
-    branchCountText: '1件',
-    children: [
-      { cid: '20260601001C01', tag: 'c', desc: 'サブスク　スタンダードプラン ¥48,000/月', target: 'sales-c' }
-    ]
-  },
-  {
-    pid: '20240901001',
-    company: 'NTT東日本株式会社',
-    branch: '名古屋支店',
-    contact: '斎藤 健一',
-    date: '2024/09/01',
-    types: ['C'],
-    branchCountText: 'C×3件',
-    children: [
-      { cid: '20240901001C01', tag: 'c', desc: 'サブスク（終了）　プレミアムプラン 2024/09〜2025/08', target: null },
-      { cid: '20240901001C02', tag: 'c', desc: 'サブスク（終了）　プレミアムプラン 2025/09〜2026/08', target: null },
-      { cid: '20240901001C03', tag: 'c', desc: 'サブスク（現行）　プレミアムプラン 2026/09〜2027/08', target: 'sales-c' }
-    ]
+  // 1. axis_ids（親ID一覧）を取得
+  const { data: axisRows, error: axisErr } = await sb
+    .from('axis_ids')
+    .select(`
+      axis_id,
+      apply_date,
+      status,
+      notes,
+      companies ( company_name ),
+      contacts ( last_name, first_name )
+    `)
+    .order('apply_date', { ascending: false });
+
+  if (axisErr) {
+    console.error('axis_ids取得エラー:', axisErr);
   }
-];
+
+  // 2. sales_a（機器販売）を取得
+  const { data: salesARows, error: salesAErr } = await sb
+    .from('sales_a')
+    .select(`
+      id,
+      branch_id,
+      axis_id,
+      quantity,
+      unit_price,
+      cost_price,
+      status,
+      billing_status,
+      delivery_date,
+      notes,
+      products ( product_name, product_code )
+    `);
+
+  if (salesAErr) {
+    console.error('sales_a取得エラー:', salesAErr);
+  }
+
+  // 3. construction_b（工事管理）を取得
+  const { data: salesBRows, error: salesBErr } = await sb
+    .from('construction_b')
+    .select(`
+      id,
+      branch_id,
+      axis_id,
+      work_name,
+      unit_price,
+      cost_price,
+      status,
+      billing_status,
+      scheduled_date,
+      completed_date,
+      notes
+    `);
+
+  if (salesBErr) {
+    console.error('construction_b取得エラー:', salesBErr);
+  }
+
+  // 4. service_c（サービス管理）を取得
+  const { data: subscRows, error: subscErr } = await sb
+    .from('service_c')
+    .select(`
+      id,
+      branch_id,
+      axis_id,
+      unit_price,
+      cost_price,
+      status,
+      billing_status,
+      contract_start,
+      contract_end,
+      renewal_count,
+      parent_branch_id,
+      notes,
+      products ( product_name )
+    `);
+
+  if (subscErr) {
+    console.error('service_c取得エラー:', subscErr);
+  }
+
+  // 5. sales_a を window.salesAData 形式に変換
+  // branch_idでグループ化（同一axis_idの複数商品を items[] にまとめる）
+  const salesAMap = {};
+  (salesARows || []).forEach(row => {
+    const key = row.branch_id;
+    if (!salesAMap[key]) {
+      salesAMap[key] = {
+        id: row.id,
+        axisId: row.branch_id,
+        company: '',  // ordersDataから後で補完
+        status: row.status || '受注',
+        items: [],
+        deliveryDate: row.delivery_date || null,
+        delivery: row.delivery_date ? row.delivery_date.replace(/-/g, '/') : '未設定',
+        billingStatus: row.billing_status || '未請求',
+        invoice: row.billing_status || '未請求',
+        attachments: []
+      };
+    }
+    salesAMap[key].items.push({
+      name: row.products ? row.products.product_name : '（商品未設定）',
+      code: row.products ? row.products.product_code || '' : '',
+      qty: String(row.quantity || 1) + '台',
+      unit: row.unit_price || 0,
+      sub: (row.unit_price || 0) * (row.quantity || 1),
+      cost: row.cost_price || 0
+    });
+  });
+  window.salesAData = Object.values(salesAMap);
+  window.salesADataByKey = {};
+  window.salesAData.forEach(d => { window.salesADataByKey[d.axisId] = d; });
+
+  // 6. construction_b を window.salesBData 形式に変換
+  window.salesBData = {};
+  (salesBRows || []).forEach(row => {
+    window.salesBData[row.branch_id] = {
+      company: '',  // ordersDataから後で補完
+      name: row.work_name || '（工事名未設定）',
+      status: row.status || '受注',
+      items: [{
+        name: row.work_name || '（工事名未設定）',
+        desc: row.notes || '',
+        qty: '1式',
+        sell: row.unit_price || 0,
+        cost: row.cost_price || 0
+      }]
+    };
+  });
+
+  // 7. service_c を window.subscData 形式に変換
+  window.subscData = {};
+  (subscRows || []).forEach(row => {
+    window.subscData[row.branch_id] = {
+      company: '',  // ordersDataから後で補完
+      plan: row.products ? row.products.product_name : '（プラン未設定）',
+      monthly: row.unit_price || 0,
+      cost: row.cost_price || 0,
+      timeline: [{
+        id: row.branch_id ? row.branch_id.slice(-3) : 'C01',
+        period: (row.contract_start || '?') + '〜' + (row.contract_end || '?'),
+        status: row.status === '契約中' ? 'current' : 'ended'
+      }]
+    };
+  });
+
+  // 8. axis_ids を window.ordersData 形式に変換
+  window.ordersData = (axisRows || []).map(row => {
+    const axisId = row.axis_id;
+    const companyName = row.companies ? row.companies.company_name : '（企業未設定）';
+    const branchName = '';
+    const contactName = row.contacts
+      ? (row.contacts.last_name + ' ' + row.contacts.first_name)
+      : '（担当者未設定）';
+
+    // この axis_id に紐づく枝番を収集
+    const children = [];
+    const types = [];
+
+    // A枝番
+    const aItems = (salesARows || []).filter(r => r.axis_id === axisId);
+    if (aItems.length > 0) {
+      types.push('A');
+      // branch_idでユニーク化
+      const branchIds = [...new Set(aItems.map(r => r.branch_id))];
+      branchIds.forEach(bid => {
+        const items = aItems.filter(r => r.branch_id === bid);
+        const total = items.reduce((s, r) => s + (r.unit_price || 0) * (r.quantity || 1), 0);
+        children.push({
+          cid: bid,
+          tag: 'a',
+          desc: '機器販売　' + items.length + '品 / ¥' + total.toLocaleString(),
+          target: 'sales-a'
+        });
+        // company名を補完
+        if (window.salesADataByKey[bid]) {
+          window.salesADataByKey[bid].company = companyName;
+        }
+      });
+    }
+
+    // B枝番
+    const bItems = (salesBRows || []).filter(r => r.axis_id === axisId);
+    if (bItems.length > 0) {
+      types.push('B');
+      bItems.forEach(row => {
+        children.push({
+          cid: row.branch_id,
+          tag: 'b',
+          desc: '工事　' + (row.work_name || '工事') + ' ¥' + (row.unit_price || 0).toLocaleString(),
+          target: 'sales-b'
+        });
+        if (window.salesBData[row.branch_id]) {
+          window.salesBData[row.branch_id].company = companyName;
+        }
+      });
+    }
+
+    // C枝番
+    const cItems = (subscRows || []).filter(r => r.axis_id === axisId);
+    if (cItems.length > 0) {
+      types.push('C');
+      cItems.forEach(row => {
+        const planName = row.products ? row.products.product_name : 'サービス';
+        children.push({
+          cid: row.branch_id,
+          tag: 'c',
+          desc: 'サブスク　' + planName + ' ¥' + (row.unit_price || 0).toLocaleString() + '/月',
+          target: 'sales-c'
+        });
+        if (window.subscData[row.branch_id]) {
+          window.subscData[row.branch_id].company = companyName;
+        }
+      });
+    }
+
+    const dateStr = row.apply_date
+      ? row.apply_date.replace(/-/g, '/')
+      : '';
+
+    return {
+      pid: axisId,
+      company: companyName,
+      branch: branchName,
+      contact: contactName,
+      date: dateStr,
+      types: types,
+      branchCountText: children.length + '件',
+      children: children
+    };
+  });
+
+  // 9. 案件一覧画面が表示中なら再描画
+  const section = document.getElementById('page-orders') || document.getElementById('section-orders');
+  if (section && section.classList.contains('active')) {
+    renderOrderTable(window.ordersData);
+  }
+}
 
 function renderOrderTable(data) {
   const tbody = document.getElementById('orders-tbody');
@@ -747,7 +714,7 @@ let orderFilterInitialized = false;
 function initOrderFilter() {
   const select = document.getElementById('order-company-filter');
   if (!select || orderFilterInitialized) return;
-  const companies = [...new Set(ordersData.map(o => o.company))];
+  const companies = [...new Set((window.ordersData || []).map(o => o.company))];
   companies.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
@@ -761,7 +728,7 @@ function applyOrderFilter() {
   const q = document.getElementById('order-search-input')?.value.trim().toLowerCase() || '';
   const companyFilter = document.getElementById('order-company-filter')?.value || '';
 
-  const filtered = ordersData.filter(o => {
+  const filtered = (window.ordersData || []).filter(o => {
     const matchQ = o.pid.includes(q) || o.company.toLowerCase().includes(q) || o.contact.toLowerCase().includes(q) || (o.children && o.children.some(c => c.cid.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q)));
     const matchCompany = companyFilter === '' || o.company === companyFilter;
     return matchQ && matchCompany;
@@ -1790,7 +1757,7 @@ function renderSalesATable() {
   const tbody = document.getElementById('sales-a-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  salesAData.forEach(item => {
+  (window.salesAData || []).forEach(item => {
     const total   = item.items.reduce((s, i) => s + i.sub, 0);
     const cost    = item.items.reduce((s, i) => s + (i.unit * (parseInt(i.qty) || 0) - i.sub + i.sub), 0);
     const profit  = total - (item.items.reduce((s, i) => s + (i.cost || 0), 0));
@@ -1837,7 +1804,7 @@ function renderSalesATable() {
 let editingSalesAId = null;
 
 function openSalesAStatusModal(itemId) {
-  const item = salesAData.find(d => d.id === itemId);
+  const item = (window.salesAData || []).find(d => d.id === itemId);
   if (!item) return;
   editingSalesAId = itemId;
 
@@ -1858,7 +1825,7 @@ function closeSalesAStatusModal() {
 }
 
 function saveSalesAStatus() {
-  const item = salesAData.find(d => d.id === editingSalesAId);
+  const item = (window.salesAData || []).find(d => d.id === editingSalesAId);
   if (!item) return;
 
   const status       = document.querySelector('input[name="sales-a-status"]:checked')?.value  || '処理中';
@@ -1870,10 +1837,10 @@ function saveSalesAStatus() {
   item.deliveryDate  = deliveryDate || null;
 
   // salesADataByKey も同期
-  if (salesADataByKey[item.axisId]) {
-    salesADataByKey[item.axisId].status   = status;
-    salesADataByKey[item.axisId].delivery = deliveryDate || '未設定';
-    salesADataByKey[item.axisId].invoice  = billing;
+  if (window.salesADataByKey && window.salesADataByKey[item.axisId]) {
+    window.salesADataByKey[item.axisId].status   = status;
+    window.salesADataByKey[item.axisId].delivery = deliveryDate || '未設定';
+    window.salesADataByKey[item.axisId].invoice  = billing;
   }
 
   closeSalesAStatusModal();
@@ -1885,7 +1852,7 @@ let currentSalesADetailId = null;
 
 function openSalesADetailModal(itemId) {
   currentSalesADetailId = itemId;
-  const item = salesAData.find(d => d.id === itemId);
+  const item = (window.salesAData || []).find(d => d.id === itemId);
   if (!item) return;
   if (!item.attachments) item.attachments = [];
 
@@ -1957,7 +1924,7 @@ function openSalesADetailModal(itemId) {
 // 旧APIとの互換性（文字列キーでも開ける）
 function openSalesADetail(id) {
   // salesADataByKey から対応する item の id を探す
-  const item = salesAData.find(d => d.axisId === id);
+  const item = (window.salesAData || []).find(d => d.axisId === id);
   if (item) {
     openSalesADetailModal(item.id);
   }
@@ -1998,7 +1965,7 @@ function handleSalesAFileSelect(event) {
 }
 
 function addSalesAAttachments(files) {
-  const item = salesAData.find(d => d.id === currentSalesADetailId);
+  const item = (window.salesAData || []).find(d => d.id === currentSalesADetailId);
   if (!item) return;
   if (!item.attachments) item.attachments = [];
 
@@ -2019,7 +1986,7 @@ function addSalesAAttachments(files) {
 
 // ===== 工事詳細 =====
 function openSalesBDetail(id) {
-  const d = salesBData[id];
+  const d = (window.salesBData || {})[id];
   if (!d) return;
 
   const totalSell = d.items.reduce((s, i) => s + i.sell, 0);
@@ -2066,7 +2033,7 @@ function openSalesBDetail(id) {
 
 // ===== サブスク詳細 =====
 function openSubscDetail(id) {
-  const d = subscData[id];
+  const d = (window.subscData || {})[id];
   if (!d) return;
 
   const timelineHtml = d.timeline.map(t => {
@@ -2101,7 +2068,7 @@ let renewalNewSuffix = '';
 function openSubscRenewal(currentId, newSuffix) {
   renewalCurrentId = currentId;
   renewalNewSuffix = newSuffix;
-  const d = subscData[currentId];
+  const d = (window.subscData || {})[currentId];
 
   const parentId = currentId.replace(/C\d+$/, '');
   const newId = parentId + newSuffix;
