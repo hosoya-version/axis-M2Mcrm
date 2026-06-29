@@ -234,6 +234,7 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
     navigate(item.dataset.page);
     if (item.dataset.page === 'companies') {
       companyCurrentPage = 1;
+      loadCompanies();
       applyCompanyFilter();
     } else if (item.dataset.page === 'contacts') {
       initContactFilter();
@@ -263,34 +264,51 @@ document.addEventListener('DOMContentLoaded', () => {
   applyOrderFilter();
 });
 
-// ===== 企業管理：モックデータ =====
-const companiesData = [
-  { id:1,  name:'NTT東日本株式会社',    furigana:'エヌティティヒガシニホン',      tel:'052-111-0001', zip:'460-0001', address:'愛知県名古屋市中区',     branchName:'名古屋支店', axisIdCount:3, contactCount:1 },
-  { id:2,  name:'NTT東日本株式会社',    furigana:'エヌティティヒガシニホン',      tel:'048-222-0002', zip:'330-0001', address:'埼玉県さいたま市大宮区',  branchName:'埼玉支店',   axisIdCount:2, contactCount:1 },
-  { id:3,  name:'テスト工業株式会社',   furigana:'テストコウギョウ',              tel:'06-333-0003',  zip:'530-0001', address:'大阪府大阪市北区',       branchName:'本社',       axisIdCount:2, contactCount:2 },
-  { id:4,  name:'サブスク商事株式会社', furigana:'サブスクショウジ',              tel:'03-444-0004',  zip:'106-0001', address:'東京都港区六本木',       branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:5,  name:'オムロンSS株式会社',   furigana:'オムロンエスエス',              tel:'03-6718-3708', zip:'140-0001', address:'東京都品川区大崎',       branchName:'東京本社',   axisIdCount:9, contactCount:3 },
-  { id:6,  name:'山田電機株式会社',     furigana:'ヤマダデンキ',                  tel:'011-555-0006', zip:'060-0001', address:'北海道札幌市中央区',     branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:7,  name:'東京通信工業株式会社', furigana:'トウキョウトウシンコウギョウ',  tel:'03-777-0008',  zip:'100-0001', address:'東京都千代田区千代田',   branchName:'本社',       axisIdCount:4, contactCount:1 },
-  { id:8,  name:'福岡システム株式会社', furigana:'フクオカシステム',              tel:'092-999-0010', zip:'810-0001', address:'福岡県福岡市中央区天神', branchName:'本社',       axisIdCount:2, contactCount:1 },
-  { id:9,  name:'仙台精工株式会社',     furigana:'センダイセイコウ',              tel:'022-100-0009', zip:'980-0001', address:'宮城県仙台市青葉区',     branchName:'本社',       axisIdCount:3, contactCount:2 },
-  { id:10, name:'広島重工株式会社',     furigana:'ヒロシマジュウコウ',            tel:'082-200-0010', zip:'730-0001', address:'広島県広島市中区',       branchName:'本社',       axisIdCount:5, contactCount:3 },
-  { id:11, name:'京都セラミック株式会社', furigana:'キョウトセラミック',          tel:'075-300-0011', zip:'600-0001', address:'京都府京都市下京区',     branchName:'本社',       axisIdCount:6, contactCount:2 },
-  { id:12, name:'神戸造船株式会社',     furigana:'コウベゾウセン',                tel:'078-400-0012', zip:'650-0001', address:'兵庫県神戸市中央区',     branchName:'本社',       axisIdCount:2, contactCount:1 },
-  { id:13, name:'横浜貿易株式会社',     furigana:'ヨコハマボウエキ',              tel:'045-500-0013', zip:'220-0001', address:'神奈川県横浜市西区',     branchName:'本社',       axisIdCount:4, contactCount:2 },
-  { id:14, name:'新潟化学株式会社',     furigana:'ニイガタカガク',                tel:'025-600-0014', zip:'950-0001', address:'新潟県新潟市中央区',     branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:15, name:'金沢電子株式会社',     furigana:'カナザワデンシ',                tel:'076-700-0015', zip:'920-0001', address:'石川県金沢市広坂',       branchName:'本社',       axisIdCount:3, contactCount:1 },
-  { id:16, name:'岡山機械株式会社',     furigana:'オカヤマキカイ',                tel:'086-800-0016', zip:'700-0001', address:'岡山県岡山市北区',       branchName:'本社',       axisIdCount:2, contactCount:1 },
-  { id:17, name:'松山食品株式会社',     furigana:'マツヤマショクヒン',            tel:'089-900-0017', zip:'790-0001', address:'愛媛県松山市一番町',     branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:18, name:'静岡物流株式会社',     furigana:'シズオカブツリュウ',            tel:'054-800-0018', zip:'420-0001', address:'静岡県静岡市葵区',       branchName:'本社',       axisIdCount:1, contactCount:2 },
-  { id:19, name:'熊本農業株式会社',     furigana:'クマモトノウギョウ',            tel:'096-900-0019', zip:'860-0001', address:'熊本県熊本市中央区',     branchName:'本社',       axisIdCount:2, contactCount:1 },
-  { id:20, name:'沖縄観光株式会社',     furigana:'オキナワカンコウ',              tel:'098-100-0020', zip:'900-0001', address:'沖縄県那覇市久茂地',     branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:21, name:'札幌IT株式会社',       furigana:'サッポロアイティ',              tel:'011-200-0021', zip:'064-0001', address:'北海道札幌市中央区',     branchName:'本社',       axisIdCount:3, contactCount:2 },
-  { id:22, name:'千葉流通株式会社',     furigana:'チバリュウツウ',                tel:'043-300-0022', zip:'260-0001', address:'千葉県千葉市中央区',     branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:23, name:'埼玉工機株式会社',     furigana:'サイタマコウキ',                tel:'048-400-0023', zip:'338-0001', address:'埼玉県さいたま市南区',   branchName:'本社',       axisIdCount:2, contactCount:1 },
-  { id:24, name:'群馬繊維株式会社',     furigana:'グンマセンイ',                  tel:'027-500-0024', zip:'370-0001', address:'群馬県高崎市八島町',     branchName:'本社',       axisIdCount:1, contactCount:1 },
-  { id:25, name:'長野精工株式会社',     furigana:'ナガノセイコウ',                tel:'026-600-0025', zip:'380-0001', address:'長野県長野市大字長野',   branchName:'本社',       axisIdCount:2, contactCount:1 },
-];
+// ===== 企業管理：Supabaseデータ =====
+let companiesData = [];
+
+async function loadCompanies() {
+  const sb = window._sb;
+  if (!sb) return;
+
+  // companies テーブルから全件取得（実カラム名に合わせる）
+  const { data: companies, error: cErr } = await sb
+    .from('companies')
+    .select('id, company_name, company_name_kana, phone, fax, postal_code, address');
+  if (cErr) { console.error('companies取得エラー:', cErr); return; }
+
+  // branches テーブルから集計
+  const { data: branches, error: bErr } = await sb
+    .from('branches')
+    .select('id, company_id');
+  if (bErr) { console.error('branches取得エラー:', bErr); return; }
+
+  // contacts テーブルから集計
+  const { data: contacts, error: ctErr } = await sb
+    .from('contacts')
+    .select('id, company_id');
+  if (ctErr) { console.error('contacts取得エラー:', ctErr); return; }
+
+  // 企業ごとに件数を集計してマージ（表示用カラム名に変換）
+  companiesData = companies.map(c => {
+    const axisIdCount = branches.filter(b => b.company_id === c.id).length;
+    const contactCount = contacts ? contacts.filter(ct => ct.company_id === c.id).length : 0;
+    return {
+      id:           c.id,
+      name:         c.company_name,
+      furigana:     c.company_name_kana,
+      tel:          c.phone,
+      fax:          c.fax,
+      zip:          c.postal_code,
+      address:      c.address,
+      axisIdCount,
+      contactCount,
+    };
+  });
+
+  // 読み込み完了後に画面を更新
+  applyCompanyFilter();
+}
 
 // ===== 企業管理：ページネーション変数 =====
 let companyCurrentPage = 1;
