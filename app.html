@@ -1207,22 +1207,14 @@
       </div>
 
       <div class="section-title">既存企業チェック — 候補を選択してください</div>
-      <div class="company-candidates">
-        <div class="candidate-card" id="cand-1" onclick="selectCandidate(1)">
-          <div class="candidate-match high">● 一致度：高</div>
-          <div class="candidate-name">オムロン ソーシアルソリューションズ株式会社</div>
-          <div class="candidate-detail">FAX番号一致 / 過去取引 8件</div>
-        </div>
-        <div class="candidate-card" id="cand-2" onclick="selectCandidate(2)">
-          <div class="candidate-match mid">● 一致度：中</div>
-          <div class="candidate-name">オムロン株式会社</div>
-          <div class="candidate-detail">名称部分一致 / 過去取引 0件</div>
-        </div>
-        <div class="candidate-card new" id="cand-3" onclick="selectCandidate(3)">
-          <div class="candidate-match" style="color:var(--text-muted);">○ 新規企業として登録</div>
-          <div class="candidate-name" style="color:var(--text-muted);">上記に該当なし</div>
-          <div class="candidate-detail">新規企業として登録します</div>
-        </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="btn btn-secondary btn-sm" onclick="searchCompanyCandidates()">
+          <i class="ti ti-search"></i> 企業名で検索
+        </button>
+        <span style="font-size:13px;color:var(--text-muted);align-self:center;">← ステップ1の企業名を使って検索します</span>
+      </div>
+      <div class="company-candidates" id="company-candidates-container">
+        <p style="color:var(--text-muted);font-size:13px;">「企業名で検索」ボタンを押してください。</p>
       </div>
 
       <div style="display:flex;justify-content:flex-end;gap:8px;">
@@ -1282,11 +1274,19 @@
       <div style="display:flex;gap:12px;margin-bottom:18px;align-items:center;">
         <button class="btn btn-secondary" onclick="addContactCard()"><i class="ti ti-plus"></i> 新規担当者を追加</button>
         <span style="font-size:13px;color:var(--text-muted);">または</span>
-        <select class="form-control" style="width:240px;font-size:13px;" onchange="if(this.value){addMockContact(this.value); this.value='';}">
-          <option value="">担当者データベースから検索...</option>
-          <option value="鈴木 次郎 (技術部)">鈴木 次郎 (技術部)</option>
-          <option value="高橋 美咲 (営業部)">高橋 美咲 (営業部)</option>
-        </select>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <input type="text" class="form-control" id="contact-search-input"
+            placeholder="担当者名で検索..."
+            style="width:200px;font-size:13px;"
+            oninput="searchContactCandidates()">
+          <select class="form-control" id="contact-search-result"
+            style="width:260px;font-size:13px;">
+            <option value="">— 名前を入力して検索 —</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" onclick="addContactFromSearch()">
+            <i class="ti ti-plus"></i> 追加
+          </button>
+        </div>
       </div>
 
       <div style="display:flex;justify-content:flex-end;gap:8px;">
@@ -1547,11 +1547,11 @@
             </tr>
             <tr>
               <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">月額単価</td>
-              <td style="padding:8px 0;font-weight:600;">1000円 / 月・台</td>
+              <td style="padding:8px 0;font-weight:600;">1000円 / 月・台<input type="hidden" id="step4-subsc-price" value="1000"></td>
             </tr>
             <tr>
               <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">契約単位 <span style="color:red">*</span></td>
-              <td style="padding:8px 0;"><input type="number" class="form-control" style="width:100px;display:inline-block;" value="1"> 台</td>
+              <td style="padding:8px 0;"><input type="number" id="step4-subsc-qty" class="form-control" style="width:100px;display:inline-block;" value="1"> 台</td>
             </tr>
             <tr>
               <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">初期登録手数料単位 <span style="color:red">*</span></td>
@@ -1633,7 +1633,7 @@
 
       <div style="display:flex;justify-content:flex-end;gap:8px;">
         <button class="btn btn-secondary" onclick="wizardPrev()"><i class="ti ti-arrow-left"></i> 戻る</button>
-        <button class="btn btn-primary" onclick="wizardNext()" style="background:#3B6D11;"><i class="ti ti-check"></i> 確定してアクシスID発行</button>
+        <button class="btn btn-primary" id="wizard-submit-btn" onclick="submitWizard()" style="background:#3B6D11;"><i class="ti ti-check"></i> 確定してアクシスID発行</button>
       </div>
     </div>
 
@@ -1643,7 +1643,7 @@
       <div style="font-size:18px;font-weight:700;margin-bottom:6px;">申込書を受付・ID発行しました</div>
       <div style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">以下のIDが採番されました。引き続き各管理画面で処理を進めてください。</div>
 
-      <div class="id-result-box" style="text-align:left;max-width:480px;margin:0 auto 24px;">
+      <div class="id-result-box" id="id-result-box" style="text-align:left;max-width:480px;margin:0 auto 24px;">
         <div class="id-result-row">
           <span class="id-result-label">親ID（申込書）</span>
           <span class="id-result-val pid">20260614002</span>

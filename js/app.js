@@ -1539,6 +1539,133 @@ function checkZipCode() {
     res.style.color = 'red';
   }
 }
+// ===== ウィザード：企業候補検索（Supabase） =====
+async function searchCompanyCandidates() {
+  const companyName = document.getElementById('s1-company')?.value?.trim() || '';
+  const container = document.getElementById('company-candidates-container');
+  if (!container) return;
+
+  if (!companyName) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">企業名を入力してください。</p>';
+    document.getElementById('step2-next')?.classList.add('btn-disabled');
+    return;
+  }
+
+  container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">検索中...</p>';
+
+  const sb = window._sb;
+  const { data, error } = await sb
+    .from('companies')
+    .select('id, company_name, company_name_kana, phone, postal_code, address')
+    .ilike('company_name', `%${companyName}%`)
+    .limit(5);
+
+  if (error) {
+    container.innerHTML = `<p style="color:red;font-size:13px;">検索エラー：${error.message}</p>`;
+    return;
+  }
+
+  window._wizardCandidates = data || [];
+  renderCompanyCandidates(companyName);
+}
+
+function renderCompanyCandidates(inputName) {
+  const container = document.getElementById('company-candidates-container');
+  const candidates = window._wizardCandidates || [];
+
+  let html = '';
+
+  // DBヒット候補
+  candidates.forEach((c, i) => {
+    html += `
+      <div class="candidate-card" id="cand-db-${i}" onclick="selectCompanyCandidate('db', ${i})">
+        <div class="candidate-match high">● 既存企業</div>
+        <div class="candidate-name">${c.company_name}</div>
+        <div class="candidate-detail">${c.phone || '電話なし'} / ${c.address || '住所なし'}</div>
+      </div>`;
+  });
+
+  // 新規登録選択肢
+  html += `
+    <div class="candidate-card new" id="cand-new" onclick="selectCompanyCandidate('new', -1)">
+      <div class="candidate-match" style="color:var(--text-muted);">○ 新規企業として登録</div>
+      <div class="candidate-name" style="color:var(--text-muted);">${inputName}</div>
+      <div class="candidate-detail">新規企業として登録します</div>
+    </div>`;
+
+  container.innerHTML = html;
+  document.getElementById('step2-next')?.classList.add('btn-disabled');
+  selectedCandidate = null;
+}
+
+function selectCompanyCandidate(type, idx) {
+  // 選択状態のリセット
+  document.querySelectorAll('.candidate-card').forEach(c => c.classList.remove('selected'));
+
+  if (type === 'db') {
+    document.getElementById('cand-db-' + idx)?.classList.add('selected');
+    window._selectedCompany = window._wizardCandidates[idx];
+    window._selectedCompanyIsNew = false;
+  } else {
+    document.getElementById('cand-new')?.classList.add('selected');
+    window._selectedCompany = null;
+    window._selectedCompanyIsNew = true;
+  }
+  selectedCandidate = type === 'db' ? idx : 'new';
+  document.getElementById('step2-next')?.classList.remove('btn-disabled');
+}
+
+// ===== ウィザード：担当者検索（Supabase） =====
+async function searchContactCandidates() {
+  const keyword = document.getElementById('contact-search-input')?.value?.trim() || '';
+  const resultEl = document.getElementById('contact-search-result');
+  if (!resultEl) return;
+
+  if (!keyword) {
+    resultEl.innerHTML = '';
+    return;
+  }
+
+  resultEl.innerHTML = '<option value="">検索中...</option>';
+
+  const sb = window._sb;
+  const { data, error } = await sb
+    .from('contacts')
+    .select('id, last_name, first_name, role, phone, email, company_id')
+    .or(`last_name.ilike.%${keyword}%,first_name.ilike.%${keyword}%`)
+    .limit(10);
+
+  if (error) {
+    resultEl.innerHTML = `<option value="">エラー：${error.message}</option>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    resultEl.innerHTML = '<option value="">該当なし</option>';
+    return;
+  }
+
+  resultEl.innerHTML = '<option value="">— 選択してください —</option>' +
+    data.map(c => {
+      const fullName = `${c.last_name || ''} ${c.first_name || ''}`.trim();
+      return `<option value="${c.id}" data-name="${fullName}" data-title="${c.role || ''}" data-phone="${c.phone || ''}" data-email="${c.email || ''}">${fullName}（${c.role || '役割なし'}）</option>`;
+    }).join('');
+}
+
+function addContactFromSearch() {
+  const sel = document.getElementById('contact-search-result');
+  if (!sel || !sel.value) return;
+  const opt = sel.options[sel.selectedIndex];
+  addMockContact(
+    opt.dataset.name,
+    opt.dataset.title,
+    opt.dataset.phone,
+    opt.dataset.email
+  );
+  sel.value = '';
+  document.getElementById('contact-search-input').value = '';
+  document.getElementById('contact-search-result').innerHTML = '';
+}
 
 // 企業候補選択
 let selectedCandidate = null;
@@ -1681,30 +1808,32 @@ function removeContactCard(idx) {
   }
 }
 
-function addMockContact(nameStr) {
+function addMockContact(nameStr, titleStr, phoneStr, emailStr) {
   const container = document.getElementById('contact-cards-container');
   const idx = contactCardCount;
   const div = document.createElement('div');
   div.className = 'contact-card';
   div.id = 'contact-' + idx;
+  const displayName = nameStr.split(' (')[0] || nameStr;
+  const dept = nameStr.match(/\((.*?)\)/)?.[1] || '';
   div.innerHTML = `
     <button class="contact-card-remove" onclick="removeContactCard(${idx})"><i class="ti ti-x"></i></button>
     <div class="contact-card-header">
       <div>
-        <div class="contact-card-name">${nameStr.split(' ')[0]} ${nameStr.split(' ')[1] || ''}</div>
+        <div class="contact-card-name">${displayName}</div>
         <span class="badge badge-gray" style="margin-top:4px;">サブ担当者</span>
         <span class="src-auto" style="margin-left:6px;background:#E3F2FD;color:#1976D2;">DB検索</span>
       </div>
       <button class="btn btn-sm btn-secondary" onclick="setMainContact(${idx})">★ メインに設定</button>
     </div>
     <div class="contact-card-form">
-      <div class="form-group"><label class="form-label">氏名</label><input class="form-control" value="${nameStr.split(' ')[0]} ${nameStr.split(' ')[1] || ''}"></div>
-      <div class="form-group"><label class="form-label">役職</label><input class="form-control" value=""></div>
-      <div class="form-group"><label class="form-label">部署</label><input class="form-control" value="${nameStr.match(/\((.*?)\)/)?.[1] || ''}"></div>
-      <div class="form-group"><label class="form-label">電話番号</label><input class="form-control" value="03-0000-0000"></div>
+      <div class="form-group"><label class="form-label">氏名</label><input class="form-control" value="${displayName}"></div>
+      <div class="form-group"><label class="form-label">役職</label><input class="form-control" value="${titleStr || ''}"></div>
+      <div class="form-group"><label class="form-label">部署</label><input class="form-control" value="${dept}"></div>
+      <div class="form-group"><label class="form-label">電話番号</label><input class="form-control" value="${phoneStr || ''}"></div>
       <div class="form-group"><label class="form-label">FAX</label><input class="form-control" value=""></div>
-      <div class="form-group"><label class="form-label">携帯電話</label><input class="form-control" value="090-0000-0000"></div>
-      <div class="form-group" style="grid-column:1/-1;"><label class="form-label">メールアドレス</label><input class="form-control" value="sample@example.com"></div>
+      <div class="form-group"><label class="form-label">携帯電話</label><input class="form-control" value=""></div>
+      <div class="form-group" style="grid-column:1/-1;"><label class="form-label">メールアドレス</label><input class="form-control" value="${emailStr || ''}"></div>
     </div>`;
   container.appendChild(div);
   contactCardCount++;
@@ -2892,4 +3021,217 @@ function saveServiceNew() {
 /* --- 一覧フィルター（モック） --- */
 function filterServiceList() {
   // 実装：必要に応じてフィルタリングロジックを追加
+}
+
+// =========================================================
+// ウィザード登録処理（Supabase INSERT）
+// =========================================================
+async function submitWizard() {
+  const sb = window._sb;
+  const btn = document.getElementById('wizard-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '登録中...'; }
+
+  try {
+    // ── 1. カスタムIDを生成（先頭8桁は申込日 YYYYMMDD） ──
+    const today = new Date();
+    const applyDate = document.getElementById('s1-date')?.value || today.toISOString().slice(0, 10);
+    const ymd = applyDate.replace(/-/g, '');
+
+    // 申込日の最大連番を取得
+    const { data: existing } = await sb
+      .from('axis_ids')
+      .select('axis_id')
+      .like('axis_id', `${ymd}%`)
+      .order('axis_id', { ascending: false })
+      .limit(1);
+
+    let seq = 1;
+    if (existing && existing.length > 0) {
+      const lastId = existing[0].axis_id;
+      const lastSeq = parseInt(lastId.slice(8, 11)) || 0;
+      seq = lastSeq + 1;
+    }
+    const parentId = ymd + String(seq).padStart(3, '0');
+
+    // ── 2. 企業IDを取得（新規ならcompaniesにINSERT） ──
+    let companyId = null;
+    let contactId = null;
+
+    if (!window._selectedCompanyIsNew && window._selectedCompany) {
+      companyId = window._selectedCompany.id;
+    } else {
+      // ステップ1のフォーム内容で新規企業を登録
+      const { data: newCo, error: coErr } = await sb.from('companies').insert({
+        company_name:      document.getElementById('s1-company')?.value?.trim() || '（無名企業）',
+        company_name_kana: document.getElementById('s1-company-kana')?.value?.trim() || null,
+        postal_code:       document.getElementById('s1-zip')?.value?.trim() || null,
+        address:           document.getElementById('s1-address')?.value?.trim() || null,
+        phone:             document.getElementById('s1-tel')?.value?.trim() || null,
+        fax:               document.getElementById('s1-mobile')?.value?.trim() || null
+      }).select('id').single();
+      if (coErr) throw new Error('companies INSERT失敗: ' + coErr.message);
+      companyId = newCo.id;
+    }
+
+    // ── 担当者を取得（メイン担当者カードをcontactsにINSERT） ──
+    const mainCard = document.getElementById('contact-' + mainContactIdx)
+                  || document.getElementById('contact-0');
+    if (mainCard && companyId) {
+      const cInputs = mainCard.querySelectorAll('.contact-card-form input');
+      // 入力順: 氏名, 役職, 部署, 電話番号, FAX, 携帯電話, メールアドレス
+      const nameStr  = cInputs[0]?.value?.trim() || '';
+      const roleStr  = cInputs[1]?.value?.trim() || '';
+      const phoneStr = cInputs[3]?.value?.trim() || '';
+      const emailStr = cInputs[6]?.value?.trim() || '';
+      if (nameStr) {
+        const parts     = nameStr.split(/\s+/);
+        const lastName  = parts[0] || nameStr;
+        const firstName = parts.slice(1).join(' ') || '';
+        const { data: newCt, error: ctErr } = await sb.from('contacts').insert({
+          company_id: companyId,
+          last_name:  lastName,
+          first_name: firstName,
+          role:       roleStr || null,
+          phone:      phoneStr || null,
+          email:      emailStr || null,
+          is_main:    true
+        }).select('id').single();
+        if (ctErr) throw new Error('contacts INSERT失敗: ' + ctErr.message);
+        contactId = newCt.id;
+      }
+    }
+
+    // ── 3. axis_ids にINSERT ──
+    const { error: axisErr } = await sb.from('axis_ids').insert({
+      axis_id:    parentId,
+      apply_date: applyDate,
+      company_id: companyId,
+      contact_id: contactId,
+      status:     '処理中'
+    });
+    if (axisErr) throw new Error('axis_ids INSERT失敗: ' + axisErr.message);
+
+    const insertedIds = { parent: parentId, a: null, b: null, c: null };
+
+    // ── 4. A 機器販売 INSERT ──
+    const includeA = document.getElementById('include-a')?.checked;
+    if (includeA) {
+      const branchId = parentId + 'A01';
+      const rows = document.querySelectorAll('#step4-product-tbody .step4-prd-row');
+      let firstProductId = null;
+      let totalQty = 0;
+      let unitPrice = 0;
+      let costPrice = 0;
+
+      rows.forEach(tr => {
+        const qty = parseInt(tr.querySelector('.prd-qty')?.value) || 0;
+        if (qty > 0) {
+          totalQty += qty;
+          unitPrice = parseInt(tr.querySelector('.prd-price')?.value) || 0;
+          if (!firstProductId) firstProductId = tr.querySelector('.prd-name')?.value || null;
+        }
+      });
+
+      if (totalQty > 0) {
+        const { error: aErr } = await sb.from('sales_a').insert({
+          branch_id:     branchId,
+          axis_id:       parentId,
+          product_id:    null,
+          quantity:      totalQty,
+          unit_price:    unitPrice,
+          cost_price:    costPrice,
+          status:        '処理中',
+          billing_status:'未請求'
+        });
+        if (aErr) throw new Error('sales_a INSERT失敗: ' + aErr.message);
+        insertedIds.a = branchId;
+      }
+    }
+
+    // ── 5. B 工事管理 INSERT ──
+    const includeB = document.getElementById('include-b')?.checked;
+    if (includeB) {
+      const bRows = document.querySelectorAll('#sales-b-tbody tr');
+      let bSeq = 1;
+      for (const tr of bRows) {
+        const workName = tr.querySelector('input[type="text"]')?.value?.trim() || '';
+        const qty      = parseInt(tr.querySelectorAll('input[type="number"]')[0]?.value) || 0;
+        const price    = parseInt(tr.querySelectorAll('input[type="number"]')[1]?.value) || 0;
+        if (!workName) continue;
+        const branchId = parentId + 'B' + String(bSeq).padStart(2, '0');
+        const { error: bErr } = await sb.from('construction_b').insert({
+          branch_id:      branchId,
+          axis_id:        parentId,
+          work_name:      workName,
+          unit_price:     price,
+          cost_price:     0,
+          status:         '処理中',
+          billing_status: '未請求'
+        });
+        if (bErr) throw new Error('construction_b INSERT失敗: ' + bErr.message);
+        insertedIds.b = branchId;
+        bSeq++;
+      }
+    }
+
+    // ── 6. C サービス INSERT ──
+    const includeC = document.getElementById('include-c')?.checked;
+    const subscQty = parseInt(document.getElementById('step4-subsc-qty')?.value) || 0;
+    if (includeC && subscQty > 0) {
+      const branchId = parentId + 'C01';
+      const unitPrice = parseInt(document.getElementById('step4-subsc-price')?.value) || 0;
+      const { error: cErr } = await sb.from('service_c').insert({
+        branch_id:      branchId,
+        axis_id:        parentId,
+        product_id:     null,
+        unit_price:     unitPrice,
+        cost_price:     0,
+        status:         '処理中',
+        billing_status: '未請求',
+        renewal_count:  0
+      });
+      if (cErr) throw new Error('service_c INSERT失敗: ' + cErr.message);
+      insertedIds.c = branchId;
+    }
+
+    // ── 7. 完了画面を更新 ──
+    updateWizardComplete(insertedIds);
+
+    // ── 8. ステップ5へ遷移 ──
+    currentWizardStep = 5;
+    updateWizardUI();
+
+    // ── 9. 案件一覧を再読み込み ──
+    if (typeof loadOrders === 'function') await loadOrders();
+
+  } catch (e) {
+    alert('登録エラー：' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '確定してアクシスID発行'; }
+  }
+}
+
+function updateWizardComplete(ids) {
+  const box = document.getElementById('id-result-box');
+  if (!box) return;
+  let html = `
+    <div class="id-result-row">
+      <span class="id-result-label">親ID（申込書）</span>
+      <span class="id-result-val pid">${ids.parent}</span>
+    </div>`;
+  if (ids.a) html += `
+    <div class="id-result-row">
+      <span class="id-result-label">枝番 A 機器販売</span>
+      <span class="id-result-val cid-a">${ids.a}</span>
+    </div>`;
+  if (ids.b) html += `
+    <div class="id-result-row">
+      <span class="id-result-label">枝番 B 工事管理</span>
+      <span class="id-result-val cid-b">${ids.b}</span>
+    </div>`;
+  if (ids.c) html += `
+    <div class="id-result-row">
+      <span class="id-result-label">枝番 C サービス</span>
+      <span class="id-result-val cid-c">${ids.c}</span>
+    </div>`;
+  box.innerHTML = html;
 }
