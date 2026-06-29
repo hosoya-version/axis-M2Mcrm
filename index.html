@@ -169,6 +169,12 @@ async function doPasswordReset() {
     errorEl.style.display = 'block';
     return;
   }
+  // 初期パスワード axis0120 のままは拒否
+  if (newPw === 'axis0120') {
+    errorEl.textContent = '初期パスワードとは異なるパスワードを設定してください';
+    errorEl.style.display = 'block';
+    return;
+  }
   try {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {

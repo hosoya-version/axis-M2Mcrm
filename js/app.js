@@ -2920,20 +2920,49 @@ async function submitAddMember() {
   const sb = window._sb;
   if (!sb) return;
 
-  const { error } = await sb
+  // 管理者の現在セッションを退避（signUpはクライアント側でセッションを
+  // 新規ユーザーに差し替えるため、後で元に戻す）
+  const { data: { session: adminSession } } = await sb.auth.getSession();
+
+  // ① Supabase Auth にユーザー作成（初期パスワード axis0120）
+  const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
+    email:    email,
+    password: 'axis0120',
+    options:  { emailRedirectTo: null }
+  });
+
+  if (signUpErr) {
+    if (errEl) { errEl.textContent = '認証ユーザー作成エラー: ' + signUpErr.message; errEl.style.display = 'block'; }
+    return;
+  }
+
+  const authUid = signUpData?.user?.id || null;
+
+  // 管理者セッションを復元（signUpで差し替わっている場合に元へ戻す）
+  if (adminSession) {
+    await sb.auth.setSession({
+      access_token:  adminSession.access_token,
+      refresh_token: adminSession.refresh_token
+    });
+  }
+
+  // ② membersテーブルに保存
+  const { error: insertErr } = await sb
     .from('members')
     .insert({
+      auth_uid:      authUid,
       last_name:     lastName,
       first_name:    firstName,
       company:       company,
       phone:         phone,
       email:         email,
       role:          role,
-      is_initial_pw: true
+      is_initial_pw: true,
+      is_active:     true
     });
 
-  if (error) {
-    if (errEl) { errEl.textContent = '追加エラー: ' + error.message; errEl.style.display = 'block'; }
+  if (insertErr) {
+    if (errEl) { errEl.textContent = 'メンバー登録エラー: ' + insertErr.message; errEl.style.display = 'block'; }
     return;
   }
 
