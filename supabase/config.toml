@@ -412,3 +412,15 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# =============================================================
+# Edge Functions 個別設定（Phase9-№1）
+# パスワードリセット依頼は未ログイン（anon）から呼ぶ公開エンドポイントのため、
+# JWT検証をスキップする（401対策）。
+# =============================================================
+[functions.request-password-reset]
+verify_jwt = false
+
+# 申込書PDF解析もフロント（anon）から呼ぶため verify_jwt をスキップ
+[functions.extract-pdf]
+verify_jwt = false
