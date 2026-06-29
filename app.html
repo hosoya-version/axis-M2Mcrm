@@ -7,13 +7,43 @@
 <!-- セッション確認：未ログイン時リダイレクト -->
 <script src="config.js"></script>
 <script>
-  (async () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Supabaseクライアントをグローバルに生成
     const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window._sb = _sb; // グローバルに公開
+
     const { data: { session } } = await _sb.auth.getSession();
     if (!session) {
-      window.location.replace('index.html');
+      window.location.href = 'index.html';
+      return;
     }
-  })();
+
+    // membersテーブルからユーザー情報を取得
+    const uid = session.user.id;
+    const { data: member, error } = await _sb
+      .from('members')
+      .select('last_name, first_name, role')
+      .eq('auth_uid', uid)
+      .single();
+
+    if (error || !member) {
+      console.error('メンバー情報の取得に失敗:', error);
+      return;
+    }
+
+    const displayName = member.last_name + ' ' + member.first_name;
+
+    window.currentUser = {
+      uid: uid,
+      displayName: displayName,
+      role: member.role
+    };
+
+    const nameEl = document.getElementById('current-user-name');
+    if (nameEl) nameEl.textContent = displayName;
+
+    console.log('ログインユーザー:', window.currentUser);
+  });
 </script>
 <meta name="viewport" content="width=1280">
 <title>AxisCRM &#x2014; 顧客管理システム</title>
@@ -329,7 +359,7 @@
         <i class="ti ti-logout"></i> ログアウト
       </button>
     </div>
-    <div id="sidebar-user-label" style="padding:4px 14px 6px;font-size: 13px;color:var(--text-muted);font-weight:600;letter-spacing:0.3px;"></div>
+    <div id="sidebar-user-label" style="padding:4px 14px 6px;font-size: 13px;color:var(--text-muted);font-weight:600;letter-spacing:0.3px;"><span id="current-user-name">読み込み中...</span></div>
     <button class="settings-btn" onclick="toggleSettings()">
       <i class="ti ti-settings"></i> 設定
       <i class="ti ti-chevron-up" id="settings-chevron" style="margin-left:auto;font-size: 13px;opacity:0.5;"></i>
