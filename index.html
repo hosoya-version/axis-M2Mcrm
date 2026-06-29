@@ -164,9 +164,7 @@ function closePwResetRequestModal() {
 
 // パスワードリセット依頼の送信（index.htmlはapp.jsを読み込まないため独自定義）
 async function submitPasswordResetRequest() {
-  const emailEl = document.getElementById('pw-reset-req-email');
-  if (!emailEl) return;
-  const email = emailEl.value.trim();
+  const email = (document.getElementById('pw-reset-req-email') || {}).value?.trim() || '';
   const errEl = document.getElementById('pw-reset-req-error');
   const msgEl = document.getElementById('pw-reset-req-success');
   if (errEl) errEl.style.display = 'none';
@@ -177,41 +175,34 @@ async function submitPasswordResetRequest() {
     return;
   }
 
-  if (!supabaseClient) {
-    if (errEl) { errEl.textContent = 'システム初期化中です。もう一度お試しください。'; errEl.style.display = 'block'; }
-    return;
-  }
+  try {
+    const res = await fetch(
+      'https://ejtaqzwqadkcdbvxocfw.supabase.co/functions/v1/request-password-reset',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ email })
+      }
+    );
 
-  // members から該当ユーザーを探す
-  const { data: member, error: selErr } = await supabaseClient
-    .from('members')
-    .select('email')
-    .eq('email', email)
-    .maybeSingle();
+    const result = await res.json();
 
-  if (selErr) {
-    if (errEl) { errEl.textContent = 'エラー: ' + selErr.message; errEl.style.display = 'block'; }
-    return;
-  }
-  if (!member) {
-    if (errEl) { errEl.textContent = '登録されていないメールアドレスです'; errEl.style.display = 'block'; }
-    return;
-  }
+    if (!res.ok) {
+      if (errEl) { errEl.textContent = 'エラー: ' + (result.error || res.status); errEl.style.display = 'block'; }
+      return;
+    }
 
-  // is_initial_pw = true に更新（管理者の対応待ち）
-  const { error: upErr } = await supabaseClient
-    .from('members')
-    .update({ is_initial_pw: true })
-    .eq('email', email);
+    if (msgEl) {
+      msgEl.textContent = '初期化依頼を受け付けました。管理者がリセットするまでしばらくお待ちください。';
+      msgEl.style.display = 'block';
+    }
+    setTimeout(() => closePwResetRequestModal(), 2500);
 
-  if (upErr) {
-    if (errEl) { errEl.textContent = 'リクエストエラー: ' + upErr.message; errEl.style.display = 'block'; }
-    return;
-  }
-
-  if (msgEl) {
-    msgEl.textContent = '初期化依頼を受け付けました。管理者がリセットするまでしばらくお待ちください。';
-    msgEl.style.display = 'block';
+  } catch (e) {
+    if (errEl) { errEl.textContent = '通信エラー: ' + e.message; errEl.style.display = 'block'; }
   }
 }
 
