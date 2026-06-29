@@ -999,8 +999,6 @@
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
                       <span style="font-weight:700;font-size:13px;">〒</span>
                       <input type="text" class="form-control step1-req" id="s1-zip" value="108-0075" style="width:110px;padding:4px;" oninput="onOrdererInput()">
-                      <button type="button" class="btn btn-sm btn-secondary" onclick="checkZipCode()">郵便番号チェック</button>
-                      <span id="zip-result" style="font-size:12px;color:var(--text-muted);"></span>
                     </div>
                     <input type="text" class="form-control step1-req" id="s1-address" value="東京都港区港南2-3-13" style="padding:4px;" oninput="onOrdererInput()" placeholder="市区町村・番地・建物名">
                   </td>
@@ -1072,8 +1070,6 @@
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
                       <span style="font-weight:700;font-size:13px;">〒</span>
                       <input type="text" class="form-control" id="s1-dlv-zip" value="" style="width:110px;padding:4px;">
-                      <button type="button" class="btn btn-sm btn-secondary" onclick="checkDlvZipCode()">郵便番号チェック</button>
-                      <span id="dlv-zip-result" style="font-size:12px;color:var(--text-muted);"></span>
                     </div>
                     <input type="text" class="form-control" id="s1-dlv-address" value="" style="padding:4px;" placeholder="市区町村・番地・建物名">
                   </td>
@@ -2482,6 +2478,39 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('service-refund-modal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveRefund()"><i class="ti ti-check"></i> 登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     サブスク更新モーダル
+     ============================================= -->
+<div class="modal-overlay" id="subsc-renewal-modal">
+  <div class="modal" style="width:460px;">
+    <button class="modal-close" onclick="closeModal('subsc-renewal-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="subsc-renewal-title">更新登録</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+      現行契約を「更新済」にし、新しい枝番Cで更新契約を発行します（契約期間は1年延長）。
+    </p>
+    <div class="form-group">
+      <label class="form-label">更新元の枝番ID</label>
+      <div style="font-weight:700;" class="cid-c" id="renewal-current-id">—</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">新しい枝番ID</label>
+      <div style="font-weight:700;" class="cid-c" id="renewal-new-id">—</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">月額単価</label>
+      <input type="text" class="form-control" id="renewal-price" readonly style="background:#f5f5f3;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">原価</label>
+      <input type="text" class="form-control" id="renewal-cost" readonly style="background:#f5f5f3;">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('subsc-renewal-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="confirmRenewal()"><i class="ti ti-refresh"></i> 更新を確定</button>
     </div>
   </div>
 </div>

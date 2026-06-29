@@ -135,6 +135,8 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
       renderTempProductTable();
     } else if (item.dataset.page === 'payments') {
       loadUnpaidPayments();
+    } else if (item.dataset.page === 'sales-c') {
+      renderServiceCList();
     }
   });
 });
@@ -1479,26 +1481,8 @@ function copyOrdererToDelivery() {
   setVal('s1-dlv-fax', getVal('s1-mobile'));
 }
 
-function checkDlvZipCode() {
-  const zip = document.getElementById('s1-dlv-zip').value;
-  const res = document.getElementById('dlv-zip-result');
-  if (zip && zip.length >= 7 && res) {
-    res.textContent = '東京都港区芝公園...（モック検索結果）';
-    res.style.color = 'var(--text-muted)';
-  }
-}
+// 郵便番号検索（モック）は廃止しました（Phase5で削除）。
 
-function checkZipCode() {
-  const zip = document.getElementById('s1-zip').value;
-  const res = document.getElementById('zip-result');
-  if (zip.length >= 7) {
-    res.textContent = '東京都港区芝公園...（モック検索結果）';
-    res.style.color = 'var(--text-muted)';
-  } else {
-    res.textContent = '郵便番号を入力してください';
-    res.style.color = 'red';
-  }
-}
 // ===== ウィザード：企業候補検索（Supabase） =====
 async function searchCompanyCandidates() {
   const companyName = document.getElementById('s1-company')?.value?.trim() || '';
@@ -2154,23 +2138,32 @@ function openSubscDetail(id) {
 let renewalCurrentId = '';
 let renewalNewSuffix = '';
 
-function openSubscRenewal(currentId, newSuffix) {
-  renewalCurrentId = currentId;
+// service_c の id（uuid）から更新元を取得してモーダルへセット
+async function openSubscRenewal(serviceId) {
+  const sb = window._sb;
+  const { data: rec, error } = await sb
+    .from('service_c')
+    .select('id, branch_id, axis_id, unit_price, cost_price, renewal_count, contract_end')
+    .eq('id', serviceId)
+    .single();
+  if (error || !rec) { alert('サービス情報の取得に失敗しました'); return; }
+
+  const oldBranchId = rec.branch_id;                       // 例: 20260614002C01
+  const parentId    = oldBranchId.replace(/C\d+$/, '');
+  const m           = oldBranchId.match(/C(\d+)$/);
+  const nextNum     = (m ? parseInt(m[1], 10) : 0) + 1;
+  const newSuffix   = 'C' + String(nextNum).padStart(2, '0');
+  const newId       = parentId + newSuffix;
+
+  // confirmRenewal が参照するグローバルをセット
+  renewalCurrentId = oldBranchId;
   renewalNewSuffix = newSuffix;
-  const d = (window.subscData || {})[currentId];
 
-  const parentId = currentId.replace(/C\d+$/, '');
-  const newId = parentId + newSuffix;
-
-  document.getElementById('renewal-current-id').textContent = currentId;
-  document.getElementById('renewal-new-id').textContent = newId;
-
-  if (d) {
-    document.getElementById('renewal-price').value = '¥' + d.monthly.toLocaleString();
-    document.getElementById('renewal-cost').value  = '¥' + d.cost.toLocaleString();
-  }
-
-  document.getElementById('subsc-renewal-title').textContent = `更新登録 — ${currentId} → ${newId}`;
+  document.getElementById('renewal-current-id').textContent = oldBranchId;
+  document.getElementById('renewal-new-id').textContent     = newId;
+  document.getElementById('renewal-price').value = '¥' + (rec.unit_price != null ? rec.unit_price : 0).toLocaleString();
+  document.getElementById('renewal-cost').value  = '¥' + (rec.cost_price != null ? rec.cost_price : 0).toLocaleString();
+  document.getElementById('subsc-renewal-title').textContent = `更新登録 — ${oldBranchId} → ${newId}`;
   openModal('subsc-renewal-modal');
 }
 
@@ -2235,6 +2228,102 @@ async function confirmRenewal() {
     console.error('confirmRenewal error:', err);
     alert('更新登録に失敗しました: ' + (err.message || err));
   }
+}
+
+// ===== サービスC一覧（Supabase） =====
+async function renderServiceCList() {
+  const sb = window._sb;
+  const tbody = document.getElementById('svc-tbody');
+  if (!sb || !tbody) return;
+  const { data, error } = await sb
+    .from('service_c')
+    .select('id, branch_id, axis_id, unit_price, cost_price, status, billing_status, contract_start, contract_end, renewal_count, axis_ids(companies(company_name))')
+    .order('branch_id', { ascending: true });
+  if (error) { console.error('service_c取得エラー:', error); return; }
+  window._serviceCList = data || [];
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="13" style="padding:16px;text-align:center;color:var(--text-muted);">サービス契約はまだありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(r => {
+    const company = (r.axis_ids && r.axis_ids.companies && r.axis_ids.companies.company_name) || '—';
+    const price   = (r.unit_price != null ? r.unit_price : 0).toLocaleString();
+    const paid    = r.billing_status === '入金済'
+      ? '<span class="badge badge-green">入金済</span>'
+      : '<span class="badge badge-yellow">' + (r.billing_status || '未請求') + '</span>';
+    return `<tr>
+      <td><span class="cid-c">${r.branch_id}</span></td>
+      <td>${company}</td>
+      <td>—</td>
+      <td>—</td>
+      <td>¥${price}</td>
+      <td>¥${price}</td>
+      <td>${r.contract_start || '—'}</td>
+      <td>${r.contract_start || '—'}</td>
+      <td>${r.contract_end || '—'}</td>
+      <td>—</td>
+      <td>${paid}</td>
+      <td><span class="badge badge-blue">${r.status || '—'}</span></td>
+      <td>
+        <button class="btn btn-sm btn-secondary" onclick="openServiceDetailReal('${r.id}')" style="margin-right:4px;"><i class="ti ti-eye"></i> 詳細</button>
+        <button class="btn btn-sm btn-primary" onclick="openSubscRenewal('${r.id}')"><i class="ti ti-refresh"></i> 更新</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// 実データ詳細（返金コンテキストをdatasetに保持）
+function openServiceDetailReal(serviceId) {
+  const r = (window._serviceCList || []).find(x => String(x.id) === String(serviceId));
+  if (!r) return;
+  const company = (r.axis_ids && r.axis_ids.companies && r.axis_ids.companies.company_name) || '—';
+
+  // 返金モーダルに対象サービスのキーを保持
+  const refundModal = document.getElementById('service-refund-modal');
+  if (refundModal) {
+    refundModal.dataset.serviceCId = r.id;
+    refundModal.dataset.branchId   = r.branch_id;
+    refundModal.dataset.axisId     = r.axis_id;
+  }
+
+  const titleEl = document.getElementById('svc-detail-title');
+  if (titleEl) titleEl.textContent = `サービス詳細 — ${r.branch_id}`;
+  const body = document.getElementById('svc-detail-basic-body');
+  if (body) {
+    body.innerHTML = `
+      <div><span style="color:var(--text-muted);">企業：</span><strong>${company}</strong></div>
+      <div><span style="color:var(--text-muted);">枝番ID：</span><strong>${r.branch_id}</strong></div>
+      <div><span style="color:var(--text-muted);">月額単価：</span><strong>¥${(r.unit_price||0).toLocaleString()}</strong></div>
+      <div><span style="color:var(--text-muted);">原価：</span><strong>¥${(r.cost_price||0).toLocaleString()}</strong></div>
+      <div><span style="color:var(--text-muted);">ステータス：</span><strong>${r.status||'—'}</strong></div>
+      <div><span style="color:var(--text-muted);">入金：</span><strong>${r.billing_status||'—'}</strong></div>
+      <div><span style="color:var(--text-muted);">契約期間：</span><strong>${r.contract_start||'—'} 〜 ${r.contract_end||'—'}</strong></div>
+      <div><span style="color:var(--text-muted);">更新回数：</span><strong>${r.renewal_count||0}</strong></div>`;
+  }
+  loadRefundHistory(r.branch_id);
+  openModal('service-detail-modal');
+}
+
+// 返金履歴をDBから読み込み
+async function loadRefundHistory(branchId) {
+  const sb = window._sb;
+  const tbody = document.getElementById('svc-refund-tbody');
+  if (!sb || !tbody) return;
+  const { data, error } = await sb
+    .from('refunds')
+    .select('refund_date, amount, reason, notes')
+    .eq('branch_id', branchId)
+    .order('refund_date', { ascending: false });
+  if (error || !data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text-muted);">返金履歴なし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(x => `<tr>
+    <td style="padding:8px;border-bottom:1px solid var(--border);">${x.refund_date || '—'}</td>
+    <td style="padding:8px;border-bottom:1px solid var(--border);">${x.notes || '—'}</td>
+    <td style="padding:8px;border-bottom:1px solid var(--border);">¥${(x.amount||0).toLocaleString()}</td>
+    <td style="padding:8px;border-bottom:1px solid var(--border);">${x.reason || ''}</td>
+  </tr>`).join('');
 }
 
 // ===== 入金登録（Supabase） =====
@@ -3062,27 +3151,106 @@ function renderOmronTable(rows) {
 function openRefundEntry() {
   openModal('service-refund-modal');
 }
-function saveRefund() {
-  var date = document.getElementById('refund-date').value;
-  var months = document.getElementById('refund-months').value;
-  var amount = document.getElementById('refund-amount').value;
-  var reason = document.getElementById('refund-reason').value;
+async function saveRefund() {
+  const sb = window._sb;
+  const modal = document.getElementById('service-refund-modal');
+  const branchId = modal ? modal.dataset.branchId : '';
+  const axisId   = modal ? modal.dataset.axisId : '';
+
+  const date   = document.getElementById('refund-date').value;
+  const months = document.getElementById('refund-months').value;
+  const amount = parseInt(document.getElementById('refund-amount').value) || 0;
+  const reason = document.getElementById('refund-reason').value.trim();
+
   if (!date || !amount || !reason) { alert('必須項目を入力してください'); return; }
-  var tbody = document.getElementById('svc-refund-tbody');
-  // 「履歴なし」行を除去
-  if (tbody.rows.length === 1 && tbody.rows[0].cells.length === 1) tbody.innerHTML = '';
-  var tr = tbody.insertRow();
-  tr.innerHTML = '<td style="padding:8px;border-bottom:1px solid var(--border);">' + date + '</td>'
-               + '<td style="padding:8px;border-bottom:1px solid var(--border);">' + (months || '—') + 'ヵ月</td>'
-               + '<td style="padding:8px;border-bottom:1px solid var(--border);">¥' + parseInt(amount).toLocaleString() + '</td>'
-               + '<td style="padding:8px;border-bottom:1px solid var(--border);">' + reason + '</td>';
-  closeModal('service-refund-modal');
+  if (!branchId) { alert('対象サービスが特定できません。一覧の「詳細」から開いてください。'); return; }
+
+  try {
+    const { error } = await sb.from('refunds').insert({
+      branch_id:   branchId,
+      axis_id:     axisId || null,
+      refund_date: date,
+      amount:      amount,
+      reason:      reason,
+      notes:       months ? (months + 'ヵ月分') : null,
+      status:      '処理中'
+    });
+    if (error) throw error;
+
+    alert('✓ 返金を登録しました');
+    closeModal('service-refund-modal');
+    // 入力をクリア
+    document.getElementById('refund-date').value = '';
+    document.getElementById('refund-months').value = '';
+    document.getElementById('refund-amount').value = '';
+    document.getElementById('refund-reason').value = '';
+    // 履歴を再読み込み
+    await loadRefundHistory(branchId);
+  } catch (err) {
+    console.error('saveRefund error:', err);
+    alert('返金登録に失敗しました: ' + (err.message || err));
+  }
 }
 
-/* --- 新規登録保存（モック） --- */
-function saveServiceNew() {
-  alert('登録しました（モック）');
-  closeModal('service-new-modal');
+/* --- 新規登録保存（Supabase：axis_ids採番 → service_c INSERT） --- */
+async function saveServiceNew() {
+  const sb = window._sb;
+  const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+
+  const unitPrice   = parseInt(gv('svc-new-unit-price')) || 0;
+  const monthlyCost = parseInt(gv('svc-new-monthly-cost')) || 0;
+  const applyDate   = gv('svc-new-apply-date') || new Date().toISOString().slice(0, 10);
+  const cycleStart  = gv('svc-new-cycle-start') || null;
+  const cycleEnd    = gv('svc-new-cycle-end') || null;
+
+  if (unitPrice <= 0) { alert('月額単価を入力してください'); return; }
+
+  try {
+    // 1. axis_ids を申込日ベースで採番（YYYYMMDD + 3桁連番）
+    const ymd = applyDate.replace(/-/g, '');
+    const { data: existing } = await sb
+      .from('axis_ids')
+      .select('axis_id')
+      .like('axis_id', `${ymd}%`)
+      .order('axis_id', { ascending: false })
+      .limit(1);
+    let seq = 1;
+    if (existing && existing.length > 0) {
+      seq = (parseInt(existing[0].axis_id.slice(8, 11)) || 0) + 1;
+    }
+    const parentId = ymd + String(seq).padStart(3, '0');
+
+    // 2. axis_ids に親レコードをINSERT
+    const { error: aErr } = await sb.from('axis_ids').insert({
+      axis_id:    parentId,
+      apply_date: applyDate,
+      status:     '処理中'
+    });
+    if (aErr) throw new Error('axis_ids採番失敗: ' + aErr.message);
+
+    // 3. service_c に枝番C01をINSERT
+    const branchId = parentId + 'C01';
+    const { error: cErr } = await sb.from('service_c').insert({
+      axis_id:        parentId,
+      branch_id:      branchId,
+      unit_price:     unitPrice,
+      cost_price:     monthlyCost,
+      status:         '処理中',
+      billing_status: '未請求',
+      contract_start: cycleStart,
+      contract_end:   cycleEnd,
+      renewal_count:  0
+    });
+    if (cErr) throw new Error('service_c INSERT失敗: ' + cErr.message);
+
+    alert(`✓ サービスを登録しました\n親ID: ${parentId} / 枝番: ${branchId}`);
+    closeModal('service-new-modal');
+    await renderServiceCList();
+    if (typeof loadOrders === 'function') await loadOrders();
+  } catch (err) {
+    console.error('saveServiceNew error:', err);
+    alert('サービス登録に失敗しました: ' + (err.message || err));
+  }
 }
 
 /* --- 一覧フィルター（モック） --- */
