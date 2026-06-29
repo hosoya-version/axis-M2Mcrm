@@ -2610,12 +2610,27 @@ function openMembersScreen() {
   const screen = document.getElementById('members-screen');
   screen.classList.add('active');
 
-  // window.currentUserが未設定ならappUserReady後に再実行
+  // window.currentUserが未設定なら最大3秒ポーリングして待つ
   if (!window.currentUser) {
-    window.addEventListener('appUserReady', () => openMembersScreen(), { once: true });
+    let waited = 0;
+    const timer = setInterval(() => {
+      waited += 100;
+      if (window.currentUser) {
+        clearInterval(timer);
+        _renderMembersView();
+      } else if (waited >= 3000) {
+        clearInterval(timer);
+        // タイムアウト：denied表示
+        document.getElementById('members-admin-view').style.display = 'none';
+        document.getElementById('members-denied-view').style.display = 'block';
+      }
+    }, 100);
     return;
   }
+  _renderMembersView();
+}
 
+function _renderMembersView() {
   const cu = window.currentUser;
   const userInfo = document.getElementById('members-user-info');
   if (userInfo) userInfo.textContent = 'ログイン中: ' + cu.name;
@@ -2664,11 +2679,37 @@ function executePasswordInit() {
 // =========================================================
 let _memberFilter = '';
 
-function renderMembersTable(filter) {
+async function renderMembersTable(filter) {
   filter = (filter !== undefined ? filter : _memberFilter).toLowerCase();
   _memberFilter = filter;
   const tbody = document.getElementById('members-tbody');
   if (!tbody) return;
+
+  // Supabaseからメンバー一覧を取得
+  const sb = window._sb;
+  if (!sb) return;
+  const { data: rows, error } = await sb
+    .from('members')
+    .select('id, last_name, first_name, email, role, is_initial_pw, auth_uid')
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.error('members取得エラー:', error);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">データ取得エラー</td></tr>';
+    return;
+  }
+
+  // MEMBERS_DBをSupabaseデータで同期（既存の編集・削除関数との互換）
+  MEMBERS_DB.length = 0;
+  rows.forEach(r => {
+    MEMBERS_DB.push({
+      email: r.email,
+      name: (r.last_name || '') + ' ' + (r.first_name || ''),
+      role: r.role || 'user',
+      isInitialPw: r.is_initial_pw || false,
+      phone: r.phone || '',
+      company: r.company || ''
+    });
+  });
 
   const filtered = MEMBERS_DB.filter(m =>
     m.name.toLowerCase().includes(filter) ||
