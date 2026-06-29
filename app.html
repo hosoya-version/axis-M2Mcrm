@@ -1,0 +1,2726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<!-- Supabase Auth SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- セッション確認：未ログイン時リダイレクト -->
+<script src="js/config.js"></script>
+<script>
+  (async () => {
+    const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { session } } = await _sb.getSession();
+    if (!session) {
+      window.location.replace('index.html');
+    }
+  })();
+</script>
+<meta name="viewport" content="width=1280">
+<title>AxisCRM &#x2014; 顧客管理システム</title>
+<meta name="description" content="AxisCRM &#x2014; 機器販売・工事・サブスクリプション対応の総合CRMシステム">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- =========================================================
+     メンバー管理画面
+     ========================================================= -->
+<div id="members-screen">
+  <div class="members-header">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeMembersScreen()">
+        <i class="ti ti-arrow-left"></i> 戻る
+      </button>
+      <div>
+        <div style="font-size:16px;font-weight:700;">メンバー管理</div>
+        <div style="font-size: 13px;color:var(--text-muted);">ユーザーアカウントの管理</div>
+      </div>
+    </div>
+    <div id="members-user-info" style="font-size: 13px;color:var(--text-secondary);"></div>
+  </div>
+  <div class="members-body">
+    <!-- 管理者のみ表示 -->
+    <div id="members-admin-view" style="display:none;">
+      <div class="card" style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div class="section-title" style="margin-bottom:0;">メンバー一覧</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button id="btn-add-member" onclick="openAddMemberModal()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .15s;"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <i class="ti ti-plus"></i> メンバーを追加
+            </button>
+            <span class="badge badge-blue"><i class="ti ti-shield-check"></i> 管理者権限でアクセス中</span>
+          </div>
+        </div>
+        <!-- 検索バー -->
+        <div class="search-bar" style="margin-bottom:14px;">
+          <i class="ti ti-search"></i>
+          <input type="text" id="member-search" placeholder="氏名・メールアドレスで絞り込み..." oninput="filterMembers()">
+        </div>
+        <div class="table-wrap" style="overflow-x:auto;">
+          <table style="min-width:860px;table-layout:fixed;white-space:nowrap;">
+            <colgroup>
+              <col style="width:160px;">
+              <col style="width:110px;">
+              <col style="width:200px;">
+              <col style="width:110px;">
+              <col style="width:70px;">
+              <col style="width:auto;min-width:240px;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>所属会社名</th>
+                <th>氏名</th>
+                <th>ログインメールアドレス</th>
+                <th>電話番号</th>
+                <th>権限</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">初期パスワードについて</div>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+          新規メンバーの初期パスワードは <code style="background:#F1EFE8;padding:2px 6px;border-radius:4px;font-weight:700;">axis0120</code> です。<br>
+          初回ログイン時にパスワード変更が強制されます。「パスワード変更」ボタンを押すと、対象ユーザーのパスワードを初期値にリセットします。<br>
+          ログインURLは下記です。<br>
+          <a href="https://docs.google.com/presentation/d/1RhJoFAOTtR_zon46vqBLa9quCTmF3uV6je608DqpJOI/edit?slide=id.p#slide=id.p" target="_blank" style="color:var(--accent);word-break:break-all;">https://docs.google.com/presentation/d/1RhJoFAOTtR_zon46vqBLa9quCTmF3uV6je608DqpJOI/edit?slide=id.p#slide=id.p</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- 一般ユーザー（アクセス拒否） -->
+    <div id="members-denied-view" style="display:none;">
+      <div class="access-denied-box">
+        <div class="access-denied-icon"><i class="ti ti-lock"></i></div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:10px;">アクセスが制限されています</div>
+        <div style="font-size:13px;color:var(--text-muted);max-width:380px;margin:0 auto;line-height:1.7;">
+          メンバー管理は<strong>管理者権限</strong>を持つユーザーのみ閲覧できます。<br>
+          アクセスが必要な場合は、管理者にお問い合わせください。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- パスワード初期化確認モーダル -->
+<div class="modal-overlay" id="pw-init-modal">
+  <div class="modal" style="width:400px;">
+    <button class="modal-close" onclick="closeModal('pw-init-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title"><i class="ti ti-key" style="color:var(--accent);"></i> パスワードを初期化しますか？</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;" id="pw-init-target-msg"></p>
+    <div style="background:#FFF8E6;border:1px solid #f0d080;border-radius:8px;padding:12px 14px;font-size: 13px;color:#7a5500;margin-bottom:18px;">
+      パスワードを初期値 <strong>axis0120</strong> にリセットします。<br>
+      次回ログイン時に新しいパスワードの設定が求められます。
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('pw-init-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="executePasswordInit()"><i class="ti ti-check"></i> 初期化する</button>
+    </div>
+  </div>
+</div>
+
+<!-- メンバー編集モーダル -->
+<div class="modal-overlay" id="member-edit-modal">
+  <div class="modal" style="width:480px;">
+    <button class="modal-close" onclick="closeModal('member-edit-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title"><i class="ti ti-edit" style="color:var(--accent);"></i> メンバー情報を編集</div>
+    <input type="hidden" id="edit-member-email-orig">
+    <div class="form-group">
+      <label class="form-label">所属会社名</label>
+      <input type="text" class="form-control" id="edit-member-company">
+    </div>
+    <div class="form-group">
+      <label class="form-label">氏名</label>
+      <input type="text" class="form-control" id="edit-member-name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メールアドレス</label>
+      <input type="email" class="form-control" id="edit-member-email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">電話番号</label>
+      <input type="text" class="form-control" id="edit-member-phone">
+    </div>
+    <div class="form-group">
+      <label class="form-label">権限</label>
+      <select class="form-control" id="edit-member-role">
+        <option value="user">一般</option>
+        <option value="admin">管理者</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('member-edit-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveMemberEdit()"><i class="ti ti-check"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- メンバー削除確認モーダル -->
+<div class="modal-overlay" id="member-delete-modal">
+  <div class="modal" style="width:420px;">
+    <button class="modal-close" onclick="closeModal('member-delete-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title"><i class="ti ti-trash" style="color:var(--badge-red-fg);"></i> メンバーを削除しますか？</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;" id="delete-member-msg"></p>
+    <div id="delete-member-error" style="display:none;background:var(--badge-red-bg);color:var(--badge-red-fg);border:1px solid #f0bcbc;border-radius:8px;padding:10px 14px;font-size: 13px;font-weight:600;margin-bottom:14px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('member-delete-modal')">キャンセル</button>
+      <button class="btn btn-danger" id="delete-member-btn" onclick="executeDeleteMember()"><i class="ti ti-trash"></i> 削除する</button>
+    </div>
+  </div>
+</div>
+
+<!-- メンバー追加モーダル -->
+<div class="modal-overlay" id="modal-add-member">
+  <div class="modal" style="width:480px;">
+    <button class="modal-close" onclick="closeModal('modal-add-member')"><i class="ti ti-x"></i></button>
+    <div class="modal-title"><i class="ti ti-user-plus" style="color:var(--accent);"></i> メンバーを追加</div>
+    <div id="add-member-error" style="display:none;background:var(--badge-red-bg);color:var(--badge-red-fg);border:1px solid #f0bcbc;border-radius:8px;padding:10px 14px;font-size: 13px;font-weight:600;margin-bottom:14px;"></div>
+    <div class="form-group">
+      <label class="form-label">氏名 <span style="color:var(--badge-red-fg);">*</span></label>
+      <input type="text" class="form-control" id="add-member-name" placeholder="例）営業 太郎">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ログインメールアドレス <span style="color:var(--badge-red-fg);">*</span></label>
+      <input type="email" class="form-control" id="add-member-email" placeholder="例）taro@m2m-datas.co.jp">
+    </div>
+    <div class="form-group">
+      <label class="form-label">所属会社名 <span style="color:var(--badge-red-fg);">*</span></label>
+      <input type="text" class="form-control" id="add-member-company" placeholder="例）M2M-Datas株式会社">
+    </div>
+    <div class="form-group">
+      <label class="form-label">電話番号 <span style="color:var(--badge-red-fg);">*</span></label>
+      <input type="tel" class="form-control" id="add-member-phone" placeholder="例）052-000-0001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">権限 <span style="color:var(--badge-red-fg);">*</span></label>
+      <select class="form-control" id="add-member-role">
+        <option value="user">一般</option>
+        <option value="admin">管理者</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-member')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitAddMember()"><i class="ti ti-check"></i> 登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- パスワード初期化依頼モーダル -->
+<div class="modal-overlay" id="modal-password-reset-request" style="z-index: 10000;">
+  <div class="modal" style="width:440px;">
+    <button class="modal-close" onclick="closeModal('modal-password-reset-request')"><i class="ti ti-x"></i></button>
+    <div class="modal-title"><i class="ti ti-mail" style="color:var(--accent);"></i> パスワード初期化のご依頼</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.7;">
+      登録されているメールアドレスを入力してください。管理者がパスワードを初期値（<strong>axis0120</strong>）にリセットします。
+    </p>
+    <div id="pw-reset-req-error" style="display:none;background:var(--badge-red-bg);color:var(--badge-red-fg);border:1px solid #f0bcbc;border-radius:8px;padding:10px 14px;font-size: 13px;font-weight:600;margin-bottom:14px;"></div>
+    <div id="pw-reset-req-success" style="display:none;background:var(--badge-green-bg);color:var(--badge-green-fg);border:1px solid #b8dfa0;border-radius:8px;padding:10px 14px;font-size: 13px;font-weight:600;margin-bottom:14px;"></div>
+    <div class="form-group">
+      <label class="form-label">登録メールアドレス <span style="color:var(--badge-red-fg);">*</span></label>
+      <input type="email" class="form-control" id="pw-reset-req-email" placeholder="例）taro@m2m-datas.co.jp">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-password-reset-request')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitPasswordResetRequest()"><i class="ti ti-send"></i> パスワード初期化を依頼する</button>
+    </div>
+  </div>
+</div>
+
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo" style="padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center;">
+    <img src="data:image/png;base64,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" alt="M2M-Datas by Axis Cloud" style="width: 172px; height: auto; display: block;">
+  </div>
+
+  <!-- メイン -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">メイン</div>
+    <button class="sidebar-item active" data-page="dashboard">
+      <i class="ti ti-layout-dashboard"></i> ダッシュボード
+    </button>
+  </div>
+
+  <!-- DB① 企業 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">DB① 企業</div>
+    <button class="sidebar-item" data-page="companies">
+      <i class="ti ti-building"></i> 企業管理
+    </button>
+    <button class="sidebar-item" data-page="contacts">
+      <i class="ti ti-users"></i> 担当者管理
+    </button>
+    <button class="sidebar-item" data-page="agencies">
+      <i class="ti ti-building"></i> 代理店管理
+    </button>
+  </div>
+
+  <!-- DB② 商品 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">DB② 商品</div>
+    <button class="sidebar-item" data-page="products">
+      <i class="ti ti-package"></i> 商品マスタ
+    </button>
+    <button class="sidebar-item" data-page="temp-products">
+      <i class="ti ti-currency-yen"></i> 臨時商品マスタ
+    </button>
+  </div>
+
+  <!-- DB③ 案件 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">DB③ 案件</div>
+    <button class="sidebar-item" data-page="order-wizard">
+      <i class="ti ti-file-plus"></i> 申込書受付（新規取込）
+    </button>
+    <button class="sidebar-item" data-page="orders">
+      <i class="ti ti-files"></i> 案件管理（アクシスID）一覧
+    </button>
+    <button class="sidebar-item" data-page="sales-a">
+      <i class="ti ti-device-desktop"></i> 機器販売一覧（A）
+    </button>
+    <button class="sidebar-item" data-page="sales-b">
+      <i class="ti ti-tools"></i> 工事管理一覧（B）
+    </button>
+    <button class="sidebar-item" data-page="sales-c">
+      <i class="ti ti-refresh"></i> サービス管理一覧（C）
+    </button>
+  </div>
+
+  <!-- 財務 -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">財務・分析</div>
+    <button class="sidebar-item" data-page="revenue">
+      <i class="ti ti-chart-bar"></i> 売上・粗利管理
+    </button>
+    <button class="sidebar-item" data-page="payments">
+      <i class="ti ti-cash"></i> 入金管理
+    </button>
+    <button class="sidebar-item" data-page="refunds">
+      <i class="ti ti-receipt-refund"></i> 返金管理
+    </button>
+    <button class="sidebar-item" onclick="showScreen('company-analysis')">
+      <i class="ti ti-chart-dots"></i> 企業分析
+    </button>
+  </div>
+
+  <!-- 設定フッター -->
+  <div class="sidebar-footer">
+    <!-- PW初期化依頼通知バナー（管理者のみ表示） -->
+    <div id="pw-reset-notification"
+      onclick="openMembersScreen()"
+      style="display:none; margin:0 8px 8px 8px; padding:10px 12px; background:var(--badge-yellow-bg, #FAEEDA); border:1px solid #fcd34d; border-radius:8px; cursor:pointer; align-items:center; gap:8px;">
+      <span style="font-size:16px;">&#128276;</span>
+      <div>
+        <div style="font-size: 13px; font-weight:600; color:var(--badge-yellow-fg, #854F0B);">PW初期化依頼</div>
+        <div id="pw-reset-count-label" style="font-size: 13px; color:var(--badge-yellow-fg, #854F0B);"></div>
+      </div>
+    </div>
+    <div id="settings-dropdown" class="settings-dropdown">
+      <button class="settings-dropdown-item" onclick="openMembersScreen()">
+        <i class="ti ti-users-group"></i> メンバー管理
+      </button>
+      <div class="settings-dropdown-sep"></div>
+      <button class="settings-dropdown-item danger" onclick="doLogout()">
+        <i class="ti ti-logout"></i> ログアウト
+      </button>
+    </div>
+    <div id="sidebar-user-label" style="padding:4px 14px 6px;font-size: 13px;color:var(--text-muted);font-weight:600;letter-spacing:0.3px;"></div>
+    <button class="settings-btn" onclick="toggleSettings()">
+      <i class="ti ti-settings"></i> 設定
+      <i class="ti ti-chevron-up" id="settings-chevron" style="margin-left:auto;font-size: 13px;opacity:0.5;"></i>
+    </button>
+  </div>
+</nav>
+
+<!-- =========================================================
+     メインコンテンツ
+     ========================================================= -->
+<main class="main">
+
+<!-- ===== 1. ダッシュボード ===== -->
+<section class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div>
+      <div class="page-title">ダッシュボード</div>
+      <div class="page-subtitle">2026年6月 — リアルタイム概況</div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid kpi-grid-4">
+    <div class="kpi-card">
+      <div class="kpi-label"><i class="ti ti-trending-up"></i> 月次売上</div>
+      <div class="kpi-value">¥12,480,000</div>
+      <div class="kpi-sub"><span class="kpi-up">▲ +8.3%</span> 先月比</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label"><i class="ti ti-coin"></i> 粗利</div>
+      <div class="kpi-value">¥5,452,000</div>
+      <div class="kpi-sub">粗利率 <strong>43.7%</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label"><i class="ti ti-alert-circle"></i> 未入金</div>
+      <div class="kpi-value" style="color:#A32D2D;">¥3,200,000</div>
+      <div class="kpi-sub">7件の請求</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label"><i class="ti ti-file-description"></i> 今月の申込書</div>
+      <div class="kpi-value">6件</div>
+      <div class="kpi-sub">枝番 計 <strong>8件</strong></div>
+    </div>
+  </div>
+
+  <!-- 下段2カラム -->
+  <div class="dash-grid-2">
+    <!-- カテゴリ別売上 -->
+    <div class="card" style="margin-bottom:0;">
+      <div class="section-title">カテゴリ別売上</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>カテゴリ</th>
+              <th>売上</th>
+              <th>粗利率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-a">A 機器販売</span></td>
+              <td class="fw-700">¥6,200,000</td>
+              <td><span class="badge badge-blue">35%</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-b">B 工事提供</span></td>
+              <td class="fw-700">¥3,800,000</td>
+              <td><span class="badge badge-green">42%</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-c">C サブスク</span></td>
+              <td class="fw-700">¥2,480,000</td>
+              <td><span class="badge badge-green">68%</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 要対応アラート -->
+    <div class="card" style="margin-bottom:0;">
+      <div class="section-title">要対応アラート</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>内容</th>
+              <th>件数</th>
+              <th>アクション</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>入金期限超過</td>
+              <td><span class="badge badge-red">3件</span></td>
+              <td><button class="alert-table-btn" onclick="navigate('payments')"><i class="ti ti-arrow-right"></i> 確認</button></td>
+            </tr>
+            <tr>
+              <td>サブスク更新月</td>
+              <td><span class="badge badge-yellow">5件</span></td>
+              <td><button class="alert-table-btn" onclick="navigate('sales-c')"><i class="ti ti-arrow-right"></i> 確認</button></td>
+            </tr>
+            <tr>
+              <td>返金処理中</td>
+              <td><span class="badge badge-yellow">2件</span></td>
+              <td><button class="alert-table-btn" onclick="navigate('refunds')"><i class="ti ti-arrow-right"></i> 確認</button></td>
+            </tr>
+            <tr>
+              <td>工事完了・未請求</td>
+              <td><span class="badge badge-blue">1件</span></td>
+              <td><button class="alert-table-btn" onclick="navigate('sales-b')"><i class="ti ti-arrow-right"></i> 確認</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. 企業・拠点管理 ===== -->
+<section class="page" id="page-companies">
+  <div class="page-header">
+    <div>
+      <div class="page-title">企業管理</div>
+      <div class="page-subtitle">取引先企業データベース</div>
+    </div>
+  </div>
+
+  <div class="search-bar" style="margin-bottom: 16px;">
+    <i class="ti ti-search"></i>
+    <input type="text" id="company-search" placeholder="企業名・フリガナ・電話・住所・郵便番号で検索..." oninput="applyCompanyFilter()" style="width: 100%; max-width: 400px;">
+  </div>
+
+  <div class="table-wrap">
+    <table id="company-table">
+      <thead>
+        <tr>
+          <th>企業名</th>
+          <th>フリガナ</th>
+          <th>電話番号</th>
+          <th>FAX</th>
+          <th>郵便番号</th>
+          <th>住所</th>
+          <th>アクシスID数</th>
+          <th>担当者数</th>
+        </tr>
+      </thead>
+      <tbody id="company-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ページネーションコントロール -->
+  <div id="company-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding:0 4px; font-size:13px; color:var(--text-muted);">
+    <div id="company-pagination-info"></div>
+    <div id="company-pagination-buttons" style="display:flex; gap:4px;"></div>
+  </div>
+</section>
+
+<!-- ===== 3. 担当者管理 ===== -->
+<section class="page" id="page-contacts">
+  <div class="page-header">
+    <div>
+      <div class="page-title">担当者管理</div>
+      <div class="page-subtitle" id="contacts-subtitle">全担当者一覧</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-sm btn-secondary" id="contacts-clear-filter" style="display:none;" onclick="clearContactFilter()"><i class="ti ti-x"></i> フィルター解除</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+    <!-- 検索窓 -->
+    <input
+      type="text"
+      id="contact-search-input"
+      placeholder="氏名・フリガナ・企業名・電話番号・E-mailで検索..."
+      oninput="applyContactFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:320px;"
+    />
+    <!-- クリアボタン -->
+    <button onclick="clearContactFilter()"
+      style="padding:6px 12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+      クリア
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="contact-table">
+      <thead>
+        <tr>
+          <th>氏名</th>
+          <th>フリガナ</th>
+          <th>企業名</th>
+          <th>部署名</th>
+          <th>役職</th>
+          <th>電話</th>
+          <th>FAX</th>
+          <th>E-mail</th>
+          <th>アクシスID数</th>
+        </tr>
+      </thead>
+      <tbody id="contacts-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 代理店管理 ===== -->
+<section class="page" id="page-agencies">
+  <div class="page-header">
+    <div>
+      <div class="page-title">代理店管理</div>
+      <div class="page-subtitle">提携パートナー・代理店一覧</div>
+    </div>
+    <button class="btn btn-primary" onclick="openAgencyModal()"><i class="ti ti-plus"></i> 新規登録</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="agency-table">
+      <thead>
+        <tr>
+          <th>代理店名</th>
+          <th>フリガナ</th>
+          <th>電話番号</th>
+          <th>メール</th>
+          <th>住所</th>
+          <th>紐づく企業</th>
+          <th>紐づくアクシスID</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 代理店 登録/編集モーダル -->
+<div class="modal-overlay" id="agency-modal">
+  <div class="modal" style="width:550px;max-height:90vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('agency-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="agency-modal-title">代理店 新規登録</div>
+    <input type="hidden" id="agency-edit-id" value="">
+    
+    <div class="form-group">
+      <label class="form-label">代理店名 <span style="color:#ef4444;">*</span></label>
+      <input type="text" class="form-control" id="agency-name" placeholder="株式会社アルファ商事">
+    </div>
+    <div class="form-group">
+      <label class="form-label">フリガナ <span style="color:#ef4444;">*</span></label>
+      <input type="text" class="form-control" id="agency-furigana" placeholder="アルファショウジ">
+    </div>
+    <div class="form-group">
+      <label class="form-label">電話番号</label>
+      <input type="text" class="form-control" id="agency-tel" placeholder="03-1234-5678">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メールアドレス</label>
+      <input type="text" class="form-control" id="agency-email" placeholder="info@alpha.co.jp">
+    </div>
+    <div class="form-group">
+      <label class="form-label">住所</label>
+      <input type="text" class="form-control" id="agency-address" placeholder="東京都新宿区西新宿1-1-1">
+    </div>
+
+    <!-- 紐づく企業（複数対応） -->
+    <div class="form-group">
+      <label class="form-label">紐づく企業</label>
+      <div id="agency-company-list" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <div style="position:relative;flex:1;">
+            <input
+              type="text"
+              class="agency-company-input"
+              placeholder="企業名またはフリガナで検索..."
+              oninput="searchAgencyCompany(this)"
+              autocomplete="off"
+              style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;"
+            />
+            <ul class="agency-company-suggestions"
+              style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:180px;overflow-y:auto;z-index:1000;margin:0;padding:0;list-style:none;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+            </ul>
+          </div>
+          <button type="button" onclick="addAgencyCompanyField()"
+            style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+            ＋追加
+          </button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin-top:4px;">
+        複数登録する場合は「＋追加」ボタンで入力欄を増やしてください。
+      </p>
+    </div>
+
+    <!-- 紐づくアクシスID（複数入力可） -->
+    <div class="form-group">
+      <label class="form-label">紐づくアクシスID</label>
+      <div id="agency-axis-id-list" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" class="agency-axis-id-input"
+            placeholder="例：AX-0001"
+            style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:200px;" />
+          <button type="button" onclick="addAxisIdField()"
+            style="padding:6px 12px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+            ＋追加
+          </button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin-top:4px;">
+        複数登録する場合は「＋追加」ボタンで入力欄を増やしてください。
+      </p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('agency-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveAgency()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 4. 商品マスタ ===== -->
+<section class="page" id="page-products">
+  <div class="page-header">
+    <div>
+      <div class="page-title">商品マスタ</div>
+      <div class="page-subtitle">商品・サービス一覧</div>
+    </div>
+    <button class="btn btn-primary"><i class="ti ti-plus"></i> 新規登録</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>商品コード</th>
+          <th>商品名</th>
+          <th>単位</th>
+          <th>カテゴリ</th>
+          <th>標準売価</th>
+          <th>標準原価</th>
+          <th>粗利率</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="product-tbody"></tbody>
+
+    </table>
+  </div>
+</section>
+
+<!-- 価格履歴モーダル -->
+<div class="modal-overlay" id="price-history-modal">
+  <div class="modal" style="width:560px;">
+    <button class="modal-close" onclick="closeModal('price-history-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="price-history-title">価格履歴</div>
+    <div id="price-history-body"></div>
+  </div>
+</div>
+
+<!-- 商品編集モーダル -->
+<div id="product-edit-modal"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin:0 0 20px;font-size:16px;">商品編集</h3>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">商品コード</label>
+      <input type="text" id="edit-product-code" readonly
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#f9fafb;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">商品名</label>
+      <input type="text" id="edit-product-name"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">標準売価（円）</label>
+      <input type="number" id="edit-product-price"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">標準原価（円）</label>
+      <input type="number" id="edit-product-cost"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">価格履歴</label>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">変更日</th>
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">標準売価</th>
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">標準原価</th>
+          </tr>
+        </thead>
+        <tbody id="product-price-history-body"></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeProductEditModal()"
+        style="padding:8px 20px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        キャンセル
+      </button>
+      <button onclick="saveProductEdit()"
+        style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+        保存
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 5. 売価・原価マスタ ===== -->
+<section class="page" id="page-prices">
+  <div class="page-header">
+    <div>
+      <div class="page-title">売価・原価マスタ</div>
+      <div class="page-subtitle">商品ごとの価格履歴管理</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-group" style="max-width:300px;">
+      <label class="form-label">商品コードを選択</label>
+      <select class="form-control" id="price-product-select" onchange="renderPriceTable()">
+        <option value="">— 選択してください —</option>
+        <option value="PRD-001">PRD-001 LANケーブル Cat6</option>
+        <option value="PRD-002">PRD-002 M2Mセット 1式</option>
+        <option value="PRD-003">PRD-003 絶縁監視装置 AZ100</option>
+        <option value="PRD-099">PRD-099 固定ネジセット M3×10</option>
+        <option value="SVC-001">SVC-001 配線工事（基本）</option>
+        <option value="SVC-002">SVC-002 基礎工事</option>
+        <option value="SUB-001">SUB-001 スタンダードプラン</option>
+        <option value="SUB-002">SUB-002 プレミアムプラン</option>
+        <option value="SUB-003">SUB-003 LTE絶縁監視サービス</option>
+      </select>
+    </div>
+    <div id="price-table-wrap" style="display:none;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>適用開始日</th>
+              <th>適用終了日</th>
+              <th>売価</th>
+              <th>原価</th>
+              <th>粗利率</th>
+              <th>変更理由</th>
+            </tr>
+          </thead>
+          <tbody id="price-history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5b. 臨時商品マスタ ===== -->
+<section class="page" id="page-temp-products">
+  <div class="page-header">
+    <div>
+      <div class="page-title">臨時商品マスタ</div>
+      <div class="page-subtitle">標準外・特注・試作品の管理</div>
+    </div>
+    <button class="btn btn-primary" onclick="openNewTempProductModal()">
+      <i class="ti ti-plus"></i> 新規登録
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="temp-product-table">
+      <thead>
+        <tr>
+          <th>商品コード</th>
+          <th>商品名</th>
+          <th>単価</th>
+          <th>仕入価格</th>
+          <th>単位</th>
+          <th>備考</th>
+          <th>価格履歴</th>
+          <th>管理者チェック</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 臨時商品編集モーダル -->
+<div id="temp-product-edit-modal"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto;">
+    <h3 style="margin:0 0 20px;font-size:16px;">臨時商品編集</h3>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">商品コード</label>
+      <input type="text" id="edit-temp-product-code" readonly
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#f9fafb;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">商品名</label>
+      <input type="text" id="edit-temp-product-name"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">単価（円）</label>
+      <input type="number" id="edit-temp-product-price"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">仕入価格（円）</label>
+      <input type="number" id="edit-temp-product-cost"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">単位</label>
+      <input type="text" id="edit-temp-product-unit"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">備考</label>
+      <textarea id="edit-temp-product-note" rows="3"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">価格履歴</label>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:left;">変更日</th>
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">単価</th>
+            <th style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">仕入価格</th>
+          </tr>
+        </thead>
+        <tbody id="temp-product-price-history-body"></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeTempProductEditModal()"
+        style="padding:8px 20px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        キャンセル
+      </button>
+      <button onclick="saveTempProductEdit()"
+        style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+        保存
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 6. 申込書受付ウィザード ===== -->
+<section class="page" id="page-order-wizard">
+  <div class="page-header">
+    <div>
+      <div class="page-title">申込書受付（新規）</div>
+      <div class="page-subtitle">4ステップウィザードで申込書を処理します</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- プログレスバー -->
+    <div class="wizard-progress" id="wizard-progress">
+      <div class="wizard-step active" id="wstep-1">
+        <div class="wizard-step-num">1</div>
+        <div class="wizard-step-label">受付</div>
+      </div>
+      <div class="wizard-step" id="wstep-2">
+        <div class="wizard-step-num">2</div>
+        <div class="wizard-step-label">企業確認</div>
+      </div>
+      <div class="wizard-step" id="wstep-3">
+        <div class="wizard-step-num">3</div>
+        <div class="wizard-step-label">担当者登録</div>
+      </div>
+      <div class="wizard-step" id="wstep-4">
+        <div class="wizard-step-num">4</div>
+        <div class="wizard-step-label">取引内容</div>
+      </div>
+      <div class="wizard-step" id="wstep-5">
+        <div class="wizard-step-num">5</div>
+        <div class="wizard-step-label">完了</div>
+      </div>
+    </div>
+
+    <!-- Step 1: 受付 -->
+    <div class="wizard-body active" id="wizard-step-1">
+      <div class="section-title" style="margin-bottom:14px;">申込書の受取方法を選択してください</div>
+      <div class="type-cards">
+        <div class="type-card selected" id="type-pdf" onclick="selectType('pdf')">
+          <div class="type-card-icon"><i class="ti ti-file-type-pdf"></i></div>
+          <div class="type-card-label">PDF</div>
+          <div style="font-size: 13px;color:var(--text-muted);margin-top:4px;">ファイルをアップロード</div>
+        </div>
+        <div class="type-card" id="type-excel" onclick="selectType('excel')">
+          <div class="type-card-icon"><i class="ti ti-file-spreadsheet"></i></div>
+          <div class="type-card-label">Excel</div>
+          <div style="font-size: 13px;color:var(--text-muted);margin-top:4px;">スプレッドシート</div>
+        </div>
+      </div>
+
+      <div class="dropzone" id="file-dropzone" onclick="handleFileUpload()">
+        <i class="ti ti-cloud-upload"></i>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ここをクリックしてファイルをアップロード</div>
+      </div>
+
+            <div id="step1-form-container" style="display:none;margin-top:20px;border:1px solid var(--border);padding:20px;border-radius:8px;background:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+          <div class="section-title" style="margin:0;">申込書読み取り結果（手修正用）</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label for="s1-date" style="font-size:13px;font-weight:700;color:var(--text-main);">申込日 <span style="color:red;">*</span></label>
+            <input type="date" class="form-control step1-req" id="s1-date" value="2026-06-14" oninput="validateStep1()" style="width:140px;padding:4px 8px;font-size:13px;">
+          </div>
+        </div>
+        <input type="hidden" id="intake-date" value="2026-06-14">
+
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text-main);">1. 機器のご発注者およびサービスお申込者</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+          <!-- 左側：ご発注者 -->
+          <div class="paper-scan-panel">
+            <table class="paper-scan-table">
+              <tbody>
+                <tr>
+                  <td class="ps-lbl">ご住所 <span style="color:red;">*</span></td>
+                  <td class="ps-val" colspan="3">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+                      <span style="font-weight:700;font-size:13px;">〒</span>
+                      <input type="text" class="form-control step1-req" id="s1-zip" value="108-0075" style="width:110px;padding:4px;" oninput="onOrdererInput()">
+                      <button type="button" class="btn btn-sm btn-secondary" onclick="checkZipCode()">郵便番号チェック</button>
+                      <span id="zip-result" style="font-size:12px;color:var(--text-muted);"></span>
+                    </div>
+                    <input type="text" class="form-control step1-req" id="s1-address" value="東京都港区港南2-3-13" style="padding:4px;" oninput="onOrdererInput()" placeholder="市区町村・番地・建物名">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">会社名 <span style="color:red;">*</span></td>
+                  <td class="ps-val" colspan="3">
+                    <input type="text" class="form-control step1-req" id="s1-company" value="オムロン ソーシアルソリューションズ株式会社" style="padding:4px;" oninput="onOrdererInput()">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">フリガナ <span style="color:red;">*</span></td>
+                  <td class="ps-val" colspan="3">
+                    <input type="text" class="form-control step1-req" id="s1-company-kana" value="オムロンソーシアルソリューションズ" style="padding:4px;" oninput="onOrdererInput()">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">部署名</td>
+                  <td class="ps-val" colspan="3">
+                    <input type="text" class="form-control" id="s1-dept" value="" style="padding:4px;" oninput="onOrdererInput()" placeholder="部署名">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">役職</td>
+                  <td class="ps-val">
+                    <input type="text" class="form-control" id="s1-title" value="" style="padding:4px;" oninput="onOrdererInput()" placeholder="役職">
+                  </td>
+                  <td class="ps-lbl">ご担当者 <span style="color:red;">*</span></td>
+                  <td class="ps-val">
+                    <input type="text" class="form-control step1-req" id="s1-name" value="山田 健太" style="padding:4px;" oninput="onOrdererInput()">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">TEL <span style="color:red;">*</span></td>
+                  <td class="ps-val">
+                    <input type="tel" class="form-control step1-req" id="s1-tel" value="03-6718-3708" style="padding:4px;" oninput="onOrdererInput()">
+                  </td>
+                  <td class="ps-lbl">FAX</td>
+                  <td class="ps-val">
+                    <input type="tel" class="form-control" id="s1-mobile" value="03-6718-3708" style="padding:4px;" oninput="onOrdererInput()">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">E-mail</td>
+                  <td class="ps-val" colspan="3">
+                    <input type="email" class="form-control" id="s1-email" value="k.yamada@omron-ss.co.jp" style="padding:4px;" oninput="onOrdererInput()">
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 右側：お届け先 -->
+          <div class="paper-scan-panel">
+            <table class="paper-scan-table">
+              <tbody>
+                <tr>
+                  <td class="ps-dlv-title">お届け先</td>
+                  <td class="ps-dlv-banner" colspan="3">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-weight:700;color:#0f172a;font-size:13px;">
+                      <input type="checkbox" id="copy-orderer" onchange="onCopyOrdererChange()" style="width:16px;height:16px;cursor:pointer;">
+                      ■ ご発注者と同じ場合はチェック
+                    </label>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">ご住所</td>
+                  <td class="ps-val" colspan="3">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+                      <span style="font-weight:700;font-size:13px;">〒</span>
+                      <input type="text" class="form-control" id="s1-dlv-zip" value="" style="width:110px;padding:4px;">
+                      <button type="button" class="btn btn-sm btn-secondary" onclick="checkDlvZipCode()">郵便番号チェック</button>
+                      <span id="dlv-zip-result" style="font-size:12px;color:var(--text-muted);"></span>
+                    </div>
+                    <input type="text" class="form-control" id="s1-dlv-address" value="" style="padding:4px;" placeholder="市区町村・番地・建物名">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">会社名</td>
+                  <td class="ps-val" colspan="3">
+                    <input type="text" class="form-control" id="s1-dlv-company" value="" style="padding:4px;">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">部署名</td>
+                  <td class="ps-val" colspan="3">
+                    <input type="text" class="form-control" id="s1-dlv-dept" value="" style="padding:4px;" placeholder="部署名">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">役職</td>
+                  <td class="ps-val">
+                    <input type="text" class="form-control" id="s1-dlv-title" value="" style="padding:4px;" placeholder="役職">
+                  </td>
+                  <td class="ps-lbl">ご担当者</td>
+                  <td class="ps-val">
+                    <input type="text" class="form-control" id="s1-dlv-name" value="" style="padding:4px;">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl">TEL</td>
+                  <td class="ps-val">
+                    <input type="tel" class="form-control" id="s1-dlv-tel" value="" style="padding:4px;">
+                  </td>
+                  <td class="ps-lbl">FAX</td>
+                  <td class="ps-val">
+                    <input type="tel" class="form-control" id="s1-dlv-fax" value="" style="padding:4px;">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-lbl" style="color:#FFF9C4;border-color:transparent;background:#FFF9C4;">—</td>
+                  <td class="ps-val" colspan="3" style="border-color:transparent;background:#FFF9C4;"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;">
+          <div class="paper-scan-panel">
+            <table class="paper-scan-table">
+              <tbody>
+                <tr>
+                  <td class="ps-lbl" style="width:110px;">備考・特記事項</td>
+                  <td class="ps-val">
+                    <textarea class="form-control" id="s1-notes" rows="2" style="padding:6px;width:100%;" oninput="validateStep1()">急ぎでお願いします</textarea>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary btn-disabled" id="step1-next" onclick="wizardNext()">次へ進む <i class="ti ti-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: 企業確認 -->
+    <div class="wizard-body" id="wizard-step-2">
+      <div class="section-title">AI 処理ログ</div>
+      <div class="ai-log">
+        <div class="ai-log-line"><span class="check">✓</span> PDFを受信・解析完了</div>
+        <div class="ai-log-line"><span class="check">✓</span> 申込書から発注者・商品・サービス情報を抽出完了</div>
+        <div class="ai-log-line"><span class="check">✓</span> 既存企業DBと照合完了 — 候補1件あり</div>
+      </div>
+
+      <div class="source-legend">
+        <span style="font-size: 13px;font-weight:600;color:var(--text-muted);">情報ソース：</span>
+        <span class="source-legend-item"><span class="src-pdf">PDF</span> 申込書PDF読み取り</span>
+      </div>
+
+      <div class="section-title">申込書読み取り結果</div>
+      <div class="table-wrap" style="margin-bottom:18px;">
+        <table>
+          <thead>
+            <tr><th>フィールド</th><th>読み取り値</th><th>ソース</th><th>信頼度</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>会社名</td>
+              <td class="fw-700">オムロン ソーシアルソリューションズ株式会社</td>
+              <td><span class="src-pdf">PDF</span></td>
+              <td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill high" style="width:95%"></div></div><span class="confidence-pct">95%</span></div></td>
+            </tr>
+            <tr>
+              <td>フリガナ</td>
+              <td>オムロンソーシアルソリューションズ</td>
+              <td><span style="background:#E8F0FE;color:#2563EB;font-size:13px;padding:1px 5px;border-radius:3px;font-weight:600;white-space:nowrap;">手入力</span></td>
+              <td><span class="text-muted">—</span></td>
+            </tr>
+            <tr>
+              <td>部署名</td>
+              <td>ALLwatch担当</td>
+              <td><span class="src-pdf">PDF</span></td>
+              <td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill mid" style="width:72%"></div></div><span class="confidence-pct" style="color:#854F0B;">72%</span></div></td>
+            </tr>
+            <tr>
+              <td>担当者名</td>
+              <td>山田 健太</td>
+              <td><span class="src-pdf">PDF</span></td>
+              <td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill high" style="width:91%"></div></div><span class="confidence-pct">91%</span></div></td>
+            </tr>
+            <tr>
+              <td>TEL</td>
+              <td>03-6718-3708</td>
+              <td><span class="src-pdf">PDF</span></td>
+              <td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill high" style="width:88%"></div></div><span class="confidence-pct">88%</span></div></td>
+            </tr>
+            <tr>
+              <td>住所</td>
+              <td>東京都港区港南2-3-13</td>
+              <td><span class="src-pdf">PDF</span></td>
+              <td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill mid" style="width:78%"></div></div><span class="confidence-pct" style="color:#854F0B;">78%</span></div></td>
+            </tr>
+            <tr>
+              <td>E-mail</td>
+              <td>k.yamada@omron-ss.co.jp</td>
+              <td><span class="src-pdf">PDF</span></td>
+              <td><div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-fill high" style="width:99%"></div></div><span class="confidence-pct">99%</span></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-title">既存企業チェック — 候補を選択してください</div>
+      <div class="company-candidates">
+        <div class="candidate-card" id="cand-1" onclick="selectCandidate(1)">
+          <div class="candidate-match high">● 一致度：高</div>
+          <div class="candidate-name">オムロン ソーシアルソリューションズ株式会社</div>
+          <div class="candidate-detail">FAX番号一致 / 過去取引 8件</div>
+        </div>
+        <div class="candidate-card" id="cand-2" onclick="selectCandidate(2)">
+          <div class="candidate-match mid">● 一致度：中</div>
+          <div class="candidate-name">オムロン株式会社</div>
+          <div class="candidate-detail">名称部分一致 / 過去取引 0件</div>
+        </div>
+        <div class="candidate-card new" id="cand-3" onclick="selectCandidate(3)">
+          <div class="candidate-match" style="color:var(--text-muted);">○ 新規企業として登録</div>
+          <div class="candidate-name" style="color:var(--text-muted);">上記に該当なし</div>
+          <div class="candidate-detail">新規企業として登録します</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" onclick="wizardPrev()"><i class="ti ti-arrow-left"></i> 戻る</button>
+        <button class="btn btn-primary btn-disabled" id="step2-next" onclick="wizardNext()">この企業で進む <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- Step 3: 担当者登録 -->
+    <div class="wizard-body" id="wizard-step-3">
+      <div class="section-title">担当者を確認・登録してください（この案件に担当者を紐づける（複数担当者選択可））</div>
+
+      <div class="contact-cards" id="contact-cards-container">
+        <!-- カード1: 山田健太 (メイン) -->
+        <div class="contact-card main-contact" id="contact-0">
+          <div class="contact-card-header">
+            <div>
+              <div class="contact-card-name">山田 健太</div>
+              <span class="badge badge-black" style="margin-top:4px;">★ メイン担当者</span>
+              <span class="src-pdf" style="margin-left:6px;">PDF記載</span>
+            </div>
+          </div>
+          <div class="contact-card-form">
+            <div class="form-group"><label class="form-label">氏名</label><input class="form-control" value="山田 健太"></div>
+            <div class="form-group"><label class="form-label">役職</label><input class="form-control" value="ALLwatch担当"></div>
+            <div class="form-group"><label class="form-label">部署</label><input class="form-control" value="技術部"></div>
+            <div class="form-group"><label class="form-label">電話番号</label><input class="form-control" value="03-6718-3708"></div>
+            <div class="form-group"><label class="form-label">FAX</label><input class="form-control" value="03-6718-3708"></div>
+            <div class="form-group"><label class="form-label">携帯電話</label><input class="form-control" value="090-1234-5678"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label class="form-label">メールアドレス</label><input class="form-control" value="k.yamada@omron-ss.co.jp"></div>
+          </div>
+        </div>
+
+        <!-- カード2: 佐藤一郎 (サブ) -->
+        <div class="contact-card" id="contact-1">
+          <button class="contact-card-remove" onclick="removeContactCard(1)"><i class="ti ti-x"></i></button>
+          <div class="contact-card-header">
+            <div>
+              <div class="contact-card-name">佐藤 一郎</div>
+              <span class="badge badge-gray" id="badge-contact-1" style="margin-top:4px;">サブ担当者</span>
+              <span class="src-pdf" style="margin-left:6px;">PDF記載</span>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="setMainContact(1)">★ メインに設定</button>
+          </div>
+          <div class="contact-card-form">
+            <div class="form-group"><label class="form-label">氏名</label><input class="form-control" value="佐藤 一郎"></div>
+            <div class="form-group"><label class="form-label">役職</label><input class="form-control" value="担当者"></div>
+            <div class="form-group"><label class="form-label">部署</label><input class="form-control" value="営業部"></div>
+            <div class="form-group"><label class="form-label">電話番号</label><input class="form-control" value="03-6718-1234"></div>
+            <div class="form-group"><label class="form-label">FAX</label><input class="form-control" value=""></div>
+            <div class="form-group"><label class="form-label">携帯電話</label><input class="form-control" value=""></div>
+            <div class="form-group" style="grid-column:1/-1;"><label class="form-label">メールアドレス</label><input class="form-control" value="s.sato@omron-ss.co.jp"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:18px;align-items:center;">
+        <button class="btn btn-secondary" onclick="addContactCard()"><i class="ti ti-plus"></i> 新規担当者を追加</button>
+        <span style="font-size:13px;color:var(--text-muted);">または</span>
+        <select class="form-control" style="width:240px;font-size:13px;" onchange="if(this.value){addMockContact(this.value); this.value='';}">
+          <option value="">担当者データベースから検索...</option>
+          <option value="鈴木 次郎 (技術部)">鈴木 次郎 (技術部)</option>
+          <option value="高橋 美咲 (営業部)">高橋 美咲 (営業部)</option>
+        </select>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" onclick="wizardPrev()"><i class="ti ti-arrow-left"></i> 戻る</button>
+        <button class="btn btn-primary" onclick="confirmContactUpdate()">次へ：取引内容 <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- Step 4: 取引内容確認 -->
+    <div class="wizard-body" id="wizard-step-4">
+      <div class="source-legend" style="margin-bottom:16px;">
+        <span style="font-size: 13px;font-weight:600;color:var(--text-muted);">情報ソース：</span>
+        <span class="source-legend-item"><span class="src-pdf">PDF</span> 申込書PDF読み取り</span>
+      </div>
+
+      <!-- A 機器販売 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;margin-bottom:14px;">
+          <input type="checkbox" id="include-a" checked style="width:16px;height:16px;cursor:pointer;margin-right:10px;">
+          <label for="include-a" style="font-size:14px;font-weight:700;cursor:pointer;"><span class="tag tag-a">A 機器販売</span></label>
+        </div>
+                <div style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;padding:12px;margin-bottom:14px;">
+          <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;">3. ご発注商品</div>
+          <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:6px;">絶縁監視装置「AZ100R」 【同梱品】乾電池 × 4個</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#4B5563;flex-wrap:wrap;gap:8px;line-height:1.4;">
+            <div>↓ AZ100R用ZCT(4ピン)付きは「標準セット」、お手持ちのオムロン製ZCT(3ピン)を繋げる方は「入れ換えセット」を選択</div>
+            <div>※電源ケーブルは付属しません。お客様でご用意ください。</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="step4-product-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#F9FAFB;border-bottom:2px solid #E5E7EB;text-align:left;">
+                <th style="padding:10px;width:38%;">商品名 / セット選択</th>
+                <th style="padding:10px;width:22%;">商品コード</th>
+                <th style="padding:10px;width:15%;">数量</th>
+                <th style="padding:10px;width:12%;">単価</th>
+                <th style="padding:10px;width:13%;">計（税別）</th>
+                <th style="padding:10px;width:6%;">ソース</th>
+              </tr>
+            </thead>
+            <tbody id="step4-product-tbody">
+              <!-- AZ100R Main Sets -->
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#ffffff;color:#000000;">
+                <td style="padding:10px;">
+                  <div style="font-weight:700;font-size:14px;">標準セット</div>
+                  <div style="font-size:12px;color:#6B7280;margin-top:2px;">【セット品】ZCT(4pin) 4m AZ100R用 × 2個</div>
+                  <input type="hidden" class="prd-name" value="標準セット">
+                </td>
+                <td class="cid-a" style="padding:10px;font-weight:600;">OSSAZ100R_A_CP</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="1" min="0" oninput="updateStep4Products()">
+                    <span>台</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥48,700<input type="hidden" class="prd-price" value="48700"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥48,700</td>
+                <td style="padding:10px;" class="src-col"><span class="src-pdf">PDF</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div style="font-weight:700;font-size:14px;">入れ換えセット</div>
+                  <div style="font-size:12px;color:#6B7280;margin-top:2px;">【セット品】ZCT変換ケーブル × 2個</div>
+                  <input type="hidden" class="prd-name" value="入れ換えセット">
+                </td>
+                <td class="cid-a" style="padding:10px;font-weight:600;">OSSAZ100R_B_CP</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>台</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥45,700<input type="hidden" class="prd-price" value="45700"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+
+              <!-- Ior Options Banner -->
+              <tr style="background:#EBF3DB;border-top:2px solid #3B6D11;border-bottom:1px solid #c8e0a1;">
+                <td colspan="6" style="padding:8px 10px;">
+                  <div style="font-weight:700;color:#284E09;font-size:13px;">Ior計測用オプション品</div>
+                  <div style="font-size:11px;color:#457B14;margin-top:2px;">↓↓ Ior計測には位相設定用ケーブルが必要です。1本で複数の絶縁監視装置の位相設定が行えます。 ↓↓</div>
+                </td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#ffffff;color:#000000;">
+                <td style="padding:10px;">
+                  <div style="font-weight:600;">位相設定用ケーブル 4m</div>
+                  <input type="hidden" class="prd-name" value="位相設定用ケーブル 4m">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSVREFCBLA</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="1" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥13,000<input type="hidden" class="prd-price" value="13000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥13,000</td>
+                <td style="padding:10px;" class="src-col"><span class="src-pdf">PDF</span></td>
+              </tr>
+
+              <!-- Other Options Banner -->
+              <tr style="background:#F3F4F6;border-top:1px solid #D1D5DB;border-bottom:1px solid #E5E7EB;">
+                <td colspan="6" style="padding:8px 10px;font-weight:700;font-size:13px;color:#374151;">その他のオプション品</td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>ZCT(4pin) 4m AZ100R用</div>
+                  <input type="hidden" class="prd-name" value="ZCT(4pin) 4m AZ100R用">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSZCT4PD</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>個</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥4,000<input type="hidden" class="prd-price" value="4000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>ZCT（４ピン）用延長ケーブル 4m</div>
+                  <input type="hidden" class="prd-name" value="ZCT（４ピン）用延長ケーブル 4m">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSZCTCBL4PA</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥2,000<input type="hidden" class="prd-price" value="2000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>ZCT変換ケーブル <span style="font-size:11px;color:#9CA3AF;">※オムロン製ZCT(3ピン)を利用する時に使用</span></div>
+                  <input type="hidden" class="prd-name" value="ZCT変換ケーブル">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSZCTCV34A</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥1,300<input type="hidden" class="prd-price" value="1300"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#ffffff;color:#000000;">
+                <td style="padding:10px;">
+                  <div style="font-weight:600;">電源ケーブル 1.5m 2p アース線付</div>
+                  <input type="hidden" class="prd-name" value="電源ケーブル 1.5m 2p アース線付">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSPWRCBLC</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="1" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥1,000<input type="hidden" class="prd-price" value="1000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥1,000</td>
+                <td style="padding:10px;" class="src-col"><span class="src-pdf">PDF</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>電源ケーブル 3m 2p アース線なし</div>
+                  <input type="hidden" class="prd-name" value="電源ケーブル 3m 2p アース線なし">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSPWRCBLA</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>本</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥1,000<input type="hidden" class="prd-price" value="1000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+              <tr class="step4-prd-row" style="border-bottom:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>外部アンテナ 5m AZ100R用 <span style="font-size:11px;color:#9CA3AF;">※電波が弱い環境で使用</span></div>
+                  <input type="hidden" class="prd-name" value="外部アンテナ 5m AZ100R用">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSSLTEANTB</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>個</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥10,000<input type="hidden" class="prd-price" value="10000"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+
+              <!-- Shipping Row -->
+              <tr class="step4-prd-row" style="border-bottom:2px solid #374151;background:#F9FAFB;color:#6B7280;">
+                <td style="padding:10px;">
+                  <div>送料 <span style="font-size:11px;color:#9CA3AF;">※総額が1万円未満の場合</span></div>
+                  <input type="hidden" class="prd-name" value="送料">
+                </td>
+                <td class="cid-a" style="padding:10px;">OSKCARR</td>
+                <td style="padding:10px;">
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="number" class="form-control prd-qty" style="font-size:13px;padding:4px;width:60px;text-align:right;" value="0" min="0" oninput="updateStep4Products()">
+                    <span>式</span>
+                  </div>
+                </td>
+                <td style="padding:10px;">¥500<input type="hidden" class="prd-price" value="500"></td>
+                <td style="padding:10px;" class="fw-700 prd-sub">¥0</td>
+                <td style="padding:10px;" class="src-col"><span class="text-muted">—</span></td>
+              </tr>
+
+              <!-- Footer Sum Row -->
+              <tr class="sum-row" style="background:#F3F4F6;">
+                <td colspan="3" style="padding:12px 10px;vertical-align:middle;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-weight:700;font-size:13px;color:#374151;">納入希望日：</span>
+                    <input type="date" class="form-control" id="delivery-pref-date" style="font-size:13px;padding:4px 8px;width:150px;background:#ffffff;" value="2026-06-25">
+                  </div>
+                </td>
+                <td style="text-align:right;padding:12px 10px;vertical-align:middle;">
+                  <div style="font-weight:700;font-size:14px;color:#111827;">合計（税別）</div>
+                  <div style="font-size:11px;color:#6B7280;margin-top:2px;font-weight:normal;">総額1万円未満の場合は送料が発生します</div>
+                </td>
+                <td class="fw-700" id="step4-prd-total" style="font-size:16px;color:#111827;padding:12px 10px;vertical-align:middle;">¥62,700</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- C サブスク -->
+      <div class="card" style="margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <input type="checkbox" id="include-c" checked style="width:16px;height:16px;cursor:pointer;">
+          <label for="include-c" style="font-size:14px;font-weight:700;cursor:pointer;"><span class="tag tag-c">C サブスクリプション</span></label>
+        </div>
+                <table style="width:100%;border-collapse:collapse;">
+          <tbody>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;width:180px;">プラン <span style="color:red">*</span></td>
+              <td style="padding:8px 0;">
+                <select class="form-control" style="width:220px;font-weight:600;">
+                  <option value="LTE絶縁監視サービス">LTE絶縁監視サービス</option>
+                  <option value="DMT200_EW630">DMT200_EW630</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">月額単価</td>
+              <td style="padding:8px 0;font-weight:600;">1000円 / 月・台</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">契約単位 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="number" class="form-control" style="width:100px;display:inline-block;" value="1"> 台</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">初期登録手数料単位 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="number" class="form-control" style="width:100px;display:inline-block;" value="2"> 台</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">初期手数料単価</td>
+              <td style="padding:8px 0;font-weight:600;">1000円 / 台</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">契約サイクル <span style="color:red">*</span></td>
+              <td style="padding:8px 0;">
+                <select class="form-control" style="width:160px;">
+                  <option value="1カ月更新">1カ月更新</option>
+                  <option value="6ヵ月更新">6ヵ月更新</option>
+                  <option value="12カ月更新" selected>12カ月更新</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">申込日 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2024-07-15"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">無料開始日 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2024-07-20"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">無料終了日 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2025-07-19"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">端数課金開始日 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2025-07-20"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">端数課金終了日 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2025-07-31"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">サイクル課金開始日 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2025-08-01"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">サイクル課金終了日（更新日） <span style="color:red">*</span></td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2026-07-31" readonly style="background:#f5f5f3;"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">請求書発行日</td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2024-07-31"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">決済方法 <span style="color:red">*</span></td>
+              <td style="padding:8px 0;">
+                <select class="form-control" style="width:160px;" onchange="document.getElementById('apply-risona-tr').style.display = (this.value === 'credit') ? '' : 'none';">
+                  <option value="credit">クレジットカード</option>
+                  <option value="transfer">現金振込</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">入金期日</td>
+              <td style="padding:8px 0;"><input type="date" class="form-control" style="width:160px;" value="2024-08-31"></td>
+            </tr>
+            <tr id="apply-risona-tr">
+              <td style="padding:8px 0;color:var(--text-muted);font-size: 13px;">クレジットりそなID</td>
+              <td style="padding:8px 0;"><input type="text" class="form-control" style="width:160px;" placeholder="例：215421" value="215421"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 工事Bコンテナ -->
+      <div id="sales-b-container"></div>
+      
+      <div style="margin-bottom:18px;">
+        <button class="btn btn-secondary" onclick="addSalesBRow()"><i class="ti ti-plus"></i> 工事B（工事管理）を追加</button>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" onclick="wizardPrev()"><i class="ti ti-arrow-left"></i> 戻る</button>
+        <button class="btn btn-primary" onclick="wizardNext()" style="background:#3B6D11;"><i class="ti ti-check"></i> 確定してアクシスID発行</button>
+      </div>
+    </div>
+
+    <!-- Step 5: 完了 -->
+    <div class="wizard-body" id="wizard-step-5" style="text-align:center;">
+      <div class="success-icon"><i class="ti ti-check"></i></div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px;">申込書を受付・ID発行しました</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">以下のIDが採番されました。引き続き各管理画面で処理を進めてください。</div>
+
+      <div class="id-result-box" style="text-align:left;max-width:480px;margin:0 auto 24px;">
+        <div class="id-result-row">
+          <span class="id-result-label">親ID（申込書）</span>
+          <span class="id-result-val pid">20260614002</span>
+        </div>
+        <div class="id-result-row">
+          <span class="id-result-label">枝番 A 機器販売</span>
+          <span class="id-result-val cid-a">20260614002A01</span>
+          <span class="text-muted text-small" style="margin-left:8px;">3品 / ¥62,700</span>
+        </div>
+        <div class="id-result-row">
+          <span class="id-result-label">枝番 C サブスク</span>
+          <span class="id-result-val cid-c">20260614002C01</span>
+          <span class="text-muted text-small" style="margin-left:8px;">¥600/月・課金開始 2025年8月〜</span>
+        </div>
+      </div>
+
+      <div style="max-width:480px;margin:0 auto;">
+        <div class="section-title" style="text-align:left;">次のアクション</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#F8F8F6;border-radius:8px;border:1px solid var(--border);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">A 納品日・担当者を設定</div>
+              <div style="font-size: 13px;color:var(--text-muted);">機器販売 20260614002A01</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="navigate('sales-a')"><i class="ti ti-arrow-right"></i> 開く</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#F8F8F6;border-radius:8px;border:1px solid var(--border);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">C 課金開始日を確定登録</div>
+              <div style="font-size: 13px;color:var(--text-muted);">サブスク 20260614002C01</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="navigate('sales-c')"><i class="ti ti-arrow-right"></i> 開く</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#F8F8F6;border-radius:8px;border:1px solid var(--border);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">山田 健太 様へ受付完了メールを返信</div>
+              <div style="font-size: 13px;color:var(--text-muted);">k.yamada@omron-ss.co.jp</div>
+            </div>
+            <button class="btn btn-sm btn-secondary"><i class="ti ti-mail"></i> 返信</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;">
+          <button class="btn btn-primary" onclick="resetWizard()"><i class="ti ti-plus"></i> 新しい申込書を受付</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7. 案件管理（アクシスID）一覧 ===== -->
+<section class="page" id="page-orders">
+  <div class="page-header">
+    <div>
+      <div class="page-title">案件管理（アクシスID）一覧</div>
+      <div class="page-subtitle" id="orders-subtitle">全申込書・枝番の管理</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-sm btn-secondary" id="orders-clear-filter" style="display:none;" onclick="clearOrderFilter()"><i class="ti ti-x"></i> フィルター解除</button>
+      <button class="btn btn-primary"><i class="ti ti-plus"></i> 新規申込書受付</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid kpi-grid-3" style="margin-bottom:16px;">
+    <div class="kpi-card">
+      <div class="kpi-label">今月の申込書</div>
+      <div class="kpi-value" id="orders-kpi-month">6件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">発行済み枝番</div>
+      <div class="kpi-value" id="orders-kpi-branches">8件</div>
+      <div class="kpi-sub" id="orders-kpi-sub">A:3 B:3 C:2（現行）</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">累計申込書</div>
+      <div class="kpi-value" id="orders-kpi-total">89件</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+    <!-- 検索窓 -->
+    <input
+      type="text"
+      id="order-search-input"
+      placeholder="親ID・企業名・担当者・枝番名で検索..."
+      oninput="applyOrderFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:280px;"
+    />
+    <!-- 企業名フィルター -->
+    <select id="order-company-filter" onchange="applyOrderFilter()"
+      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+      <option value="">企業名（すべて）</option>
+    </select>
+    <!-- クリアボタン -->
+    <button onclick="clearOrderFilter()"
+      style="padding:6px 12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+      クリア
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="orders-table">
+      <thead>
+        <tr>
+          <th>親ID</th>
+          <th>企業名・拠点</th>
+          <th>担当者</th>
+          <th>申込日</th>
+          <th>取引種別</th>
+          <th>枝番数</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="orders-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 8. 機器販売（A） ===== -->
+<section class="page" id="page-sales-a">
+  <div class="page-header">
+    <div>
+      <div class="page-title">機器販売管理（Aシリーズ）</div>
+      <div class="page-subtitle">機器・物品の販売管理</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>枝番ID (A)</th>
+          <th>企業名</th>
+          <th>明細品数</th>
+          <th>売上合計</th>
+          <th>原価合計</th>
+          <th>粗利</th>
+          <th>ステータス</th>
+          <th>納品日</th>
+          <th>請求状況</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="sales-a-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 機器販売詳細モーダル -->
+<div class="modal-overlay" id="sales-a-modal">
+  <div class="modal" style="width:600px;">
+    <button class="modal-close" onclick="closeModal('sales-a-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="sales-a-modal-title">機器販売詳細</div>
+    <div id="sales-a-modal-body"></div>
+  </div>
+</div>
+
+<!-- Aシリーズ ステータス設定モーダル -->
+<div id="sales-a-status-modal"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:400px;max-width:90vw;">
+    <h3 style="margin:0 0 20px;font-size:16px;">ステータス設定</h3>
+
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">処理ステータス</label>
+      <div style="display:flex;gap:10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-status" value="処理中" />
+          処理中
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-status" value="納品済" />
+          納品済
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">納品日</label>
+      <input type="date" id="sales-a-delivery-date"
+        style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;" />
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">請求状況</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-billing" value="未請求" />
+          未請求
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-billing" value="請求済" />
+          請求済
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="sales-a-billing" value="入金済" />
+          入金済
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeSalesAStatusModal()"
+        style="padding:8px 20px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        キャンセル
+      </button>
+      <button onclick="saveSalesAStatus()"
+        style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
+        保存
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 9. 工事管理（B） ===== -->
+<section class="page" id="page-sales-b">
+  <div class="page-header">
+    <div>
+      <div class="page-title">工事管理（Bシリーズ）</div>
+      <div class="page-subtitle">工事・施工案件の管理</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>枝番ID (B)</th>
+          <th>企業名</th>
+          <th>工事件名</th>
+          <th>工事項目数</th>
+          <th>売上</th>
+          <th>原価</th>
+          <th>粗利</th>
+          <th>ステータス</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="cid-b">20260614001B01</span></td>
+          <td>NTT東日本</td>
+          <td>名古屋 設備工事</td>
+          <td>3項目</td>
+          <td>¥800,000</td>
+          <td>¥460,000</td>
+          <td>¥340,000</td>
+          <td><span class="badge badge-yellow">施工中</span></td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openSalesBDetail('20260614001B01')"><i class="ti ti-eye"></i> 詳細</button></td>
+        </tr>
+        <tr>
+          <td><span class="cid-b">20260610001B01</span></td>
+          <td>テスト工業</td>
+          <td>大阪 更新工事</td>
+          <td>2項目</td>
+          <td>¥1,200,000</td>
+          <td>¥700,000</td>
+          <td>¥500,000</td>
+          <td><span class="badge badge-blue">完了・未請求</span></td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openSalesBDetail('20260610001B01')"><i class="ti ti-eye"></i> 詳細</button></td>
+        </tr>
+        <tr>
+          <td><span class="cid-b">20251101001B01</span></td>
+          <td>NTT東日本</td>
+          <td>埼玉 メンテ</td>
+          <td>1項目</td>
+          <td>¥450,000</td>
+          <td>¥260,000</td>
+          <td>¥190,000</td>
+          <td><span class="badge badge-green">完了・請求済</span></td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openSalesBDetail('20251101001B01')"><i class="ti ti-eye"></i> 詳細</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 工事詳細モーダル -->
+<div class="modal-overlay" id="sales-b-modal">
+  <div class="modal" style="width:680px;">
+    <button class="modal-close" onclick="closeModal('sales-b-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="sales-b-modal-title">工事管理詳細</div>
+    <div id="sales-b-modal-body"></div>
+  </div>
+</div>
+
+<!-- ===== 10. サブスク管理（C） ===== -->
+<!-- ===== サービス管理一覧（C） ===== -->
+<section class="page" id="page-sales-c">
+  <div class="page-header">
+    <div>
+      <div class="page-title">サービス管理一覧（C）</div>
+      <div class="page-subtitle">サブスク契約・課金・入金・前受け管理</div>
+    </div>
+    <button class="btn btn-primary" onclick="openServiceNewModal()">
+      <i class="ti ti-plus"></i> 新規登録
+    </button>
+  </div>
+
+  <!-- フィルターバー -->
+  <div class="card" style="margin-bottom:12px;padding:12px 16px;">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <input type="text" class="form-control" style="width:200px;" placeholder="企業名・ID検索" id="svc-search">
+      <select class="form-control" style="width:150px;" id="svc-filter-plan">
+        <option value="">プラン：すべて</option>
+        <option>LTE絶縁サービス</option>
+        <option>LTEソラモニ4G</option>
+        <option>LTEソラモニ5G</option>
+      </select>
+      <select class="form-control" style="width:150px;" id="svc-filter-status">
+        <option value="">ステータス：すべて</option>
+        <option>無料期間中</option>
+        <option>端数課金中</option>
+        <option>サイクル課金中</option>
+        <option>解約済</option>
+      </select>
+      <select class="form-control" style="width:150px;" id="svc-filter-payment">
+        <option value="">決済：すべて</option>
+        <option>クレジットカード</option>
+        <option>現金振込</option>
+      </select>
+      <button class="btn btn-secondary" onclick="filterServiceList()"><i class="ti ti-search"></i> 検索</button>
+    </div>
+  </div>
+
+  <!-- 一覧テーブル -->
+  <div class="table-wrap">
+    <table id="svc-table">
+      <thead>
+        <tr>
+          <th>枝番ID(C)</th>
+          <th>企業名</th>
+          <th>プラン</th>
+          <th>契約台数</th>
+          <th>月額単価</th>
+          <th>月額合計</th>
+          <th>申込日</th>
+          <th>サイクル課金開始</th>
+          <th>サイクル課金終了</th>
+          <th>決済方法</th>
+          <th>入金</th>
+          <th>ステータス</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="svc-tbody">
+        <!-- サンプルデータ行 -->
+        <tr>
+          <td><span class="cid-c">20260215001C01</span></td>
+          <td>オムロンSS</td>
+          <td>LTEソラモニ4G</td>
+          <td>2台</td>
+          <td>¥900</td>
+          <td>¥1,800</td>
+          <td>2026/02/15</td>
+          <td>2027/04/01</td>
+          <td>2028/03/31</td>
+          <td><span class="badge badge-blue">クレジット</span></td>
+          <td><span class="badge badge-green">入金済</span></td>
+          <td><span class="badge badge-yellow">無料期間中</span></td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="openServiceDetail('20260215001C01')" style="margin-right:4px;">
+              <i class="ti ti-eye"></i> 詳細
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="openServiceEdit('20260215001C01')">
+              <i class="ti ti-pencil"></i> 編集
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- =============================================
+     サービス新規登録モーダル
+     ============================================= -->
+<div class="modal-overlay" id="service-new-modal">
+  <div class="modal" style="width:700px;max-height:90vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('service-new-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">サービス新規登録</div>
+
+    <!-- プラン基本情報 -->
+    <div class="section-title" style="margin-bottom:10px;">■ プラン情報</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">プラン <span style="color:red">*</span></label>
+        <select class="form-control" id="svc-new-plan">
+          <option value="">選択してください</option>
+          <option>LTE絶縁サービス</option>
+          <option>LTEソラモニ4G</option>
+          <option>LTEソラモニ5G</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">契約サイクル <span style="color:red">*</span></label>
+        <select class="form-control" id="svc-new-cycle">
+          <option value="">選択してください</option>
+          <option value="1">1ヵ月サイクル</option>
+          <option value="6">6ヵ月サイクル</option>
+          <option value="12">12ヵ月サイクル</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">月額単価（円/台） <span style="color:red">*</span></label>
+        <input type="number" class="form-control" id="svc-new-unit-price" placeholder="例：900">
+      </div>
+      <div class="form-group">
+        <label class="form-label">契約台数 <span style="color:red">*</span></label>
+        <input type="number" class="form-control" id="svc-new-unit-count" placeholder="例：2" oninput="calcServiceMonthly()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">月額合計（自動計算）</label>
+        <input type="text" class="form-control" id="svc-new-monthly-total" readonly style="background:#f5f5f3;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期登録台数</label>
+        <input type="number" class="form-control" id="svc-new-init-count" placeholder="例：2" oninput="calcServiceInit()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期単価（円/台）</label>
+        <input type="number" class="form-control" id="svc-new-init-price" placeholder="例：2000" oninput="calcServiceInit()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期登録手数料合計（自動計算）</label>
+        <input type="text" class="form-control" id="svc-new-init-total" readonly style="background:#f5f5f3;">
+      </div>
+    </div>
+
+    <!-- 日付情報 -->
+    <div class="section-title" style="margin-bottom:10px;">■ 契約日程</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">申込日 <span style="color:red">*</span></label>
+        <input type="date" class="form-control" id="svc-new-apply-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">無料開始日</label>
+        <input type="date" class="form-control" id="svc-new-free-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">無料終了日</label>
+        <input type="date" class="form-control" id="svc-new-free-end">
+      </div>
+      <div class="form-group">
+        <label class="form-label">端数課金開始日</label>
+        <input type="date" class="form-control" id="svc-new-fraction-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">端数課金終了日</label>
+        <input type="date" class="form-control" id="svc-new-fraction-end">
+      </div>
+      <div class="form-group">
+        <label class="form-label">サイクル課金開始日 <span style="color:red">*</span></label>
+        <input type="date" class="form-control" id="svc-new-cycle-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">サイクル課金終了日（自動更新日）</label>
+        <input type="date" class="form-control" id="svc-new-cycle-end" readonly style="background:#f5f5f3;">
+        <div style="font-size: 13px;color:var(--text-muted);margin-top:2px;">契約サイクルにより自動計算</div>
+      </div>
+    </div>
+
+    <!-- 請求・決済情報 -->
+    <div class="section-title" style="margin-bottom:10px;">■ 請求・決済</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">請求書発行日</label>
+        <input type="date" class="form-control" id="svc-new-invoice-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">決済方法 <span style="color:red">*</span></label>
+        <select class="form-control" id="svc-new-payment-method" onchange="toggleRisonaField()">
+          <option value="">選択してください</option>
+          <option value="credit">クレジットカード</option>
+          <option value="transfer">現金振込</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">入金期日</label>
+        <input type="date" class="form-control" id="svc-new-payment-due">
+      </div>
+      <div class="form-group" id="svc-risona-group" style="display:none;">
+        <label class="form-label">クレジットりそなID</label>
+        <input type="text" class="form-control" id="svc-new-risona-id" placeholder="例：215421">
+      </div>
+    </div>
+
+    <!-- 原価（粗利計算用） -->
+    <div class="section-title" style="margin-bottom:10px;">■ 原価情報（粗利計算用）</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">月額原価（円/台）</label>
+        <input type="number" class="form-control" id="svc-new-monthly-cost" placeholder="例：400">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期登録原価（円/台）</label>
+        <input type="number" class="form-control" id="svc-new-init-cost" placeholder="例：500">
+      </div>
+    </div>
+
+    <!-- オムロンID登録 -->
+    <div class="section-title" style="margin-bottom:10px;">■ オムロンID登録（台数分）</div>
+    <div id="svc-new-omron-rows" style="margin-bottom:16px;">
+      <!-- 台数に応じてJS側で動的生成 -->
+      <div style="color:var(--text-muted);font-size: 13px;">契約台数を入力後に自動生成されます</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="generateOmronRows()" style="margin-bottom:16px;">
+      <i class="ti ti-refresh"></i> 台数に合わせてオムロン行を生成
+    </button>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('service-new-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveServiceNew()"><i class="ti ti-check"></i> 登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     サービス編集モーダル
+     ============================================= -->
+<div class="modal-overlay" id="service-edit-modal">
+  <div class="modal" style="width:700px;max-height:90vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('service-edit-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">サービス詳細編集</div>
+
+    <!-- 入金・ステータス管理 -->
+    <div class="section-title" style="margin-bottom:10px;">■ 入金ステータス管理</div>
+    <div class="card" style="margin-bottom:16px;padding:12px 16px;background:#F0F6FF;">
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="svc-edit-paid-init"> 初期登録手数料：入金済
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="svc-edit-paid-monthly"> 月額（直近サイクル）：入金済
+        </label>
+      </div>
+    </div>
+
+    <!-- プラン基本情報 -->
+    <div class="section-title" style="margin-bottom:10px;">■ プラン情報</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">プラン <span style="color:red">*</span></label>
+        <select class="form-control" id="svc-edit-plan">
+          <option value="">選択してください</option>
+          <option>LTE絶縁サービス</option>
+          <option>LTEソラモニ4G</option>
+          <option>LTEソラモニ5G</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">契約サイクル <span style="color:red">*</span></label>
+        <select class="form-control" id="svc-edit-cycle">
+          <option value="">選択してください</option>
+          <option value="1ヵ月">1ヵ月サイクル</option>
+          <option value="6ヵ月">6ヵ月サイクル</option>
+          <option value="12ヵ月">12ヵ月サイクル</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">月額単価（円/台） <span style="color:red">*</span></label>
+        <input type="number" class="form-control" id="svc-edit-unit-price" oninput="calcServiceEditMonthly()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">契約台数 <span style="color:red">*</span></label>
+        <input type="number" class="form-control" id="svc-edit-unit-count" oninput="calcServiceEditMonthly()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">月額合計（自動計算）</label>
+        <input type="text" class="form-control" id="svc-edit-monthly-total" readonly style="background:#f5f5f3;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期登録台数</label>
+        <input type="number" class="form-control" id="svc-edit-init-count" oninput="calcServiceEditInit()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期単価（円/台）</label>
+        <input type="number" class="form-control" id="svc-edit-init-price" oninput="calcServiceEditInit()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期登録手数料合計（自動計算）</label>
+        <input type="text" class="form-control" id="svc-edit-init-total" readonly style="background:#f5f5f3;">
+      </div>
+    </div>
+
+    <!-- 日付情報 -->
+    <div class="section-title" style="margin-bottom:10px;">■ 契約日程</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">申込日 <span style="color:red">*</span></label>
+        <input type="date" class="form-control" id="svc-edit-apply-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">無料開始日</label>
+        <input type="date" class="form-control" id="svc-edit-free-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">無料終了日</label>
+        <input type="date" class="form-control" id="svc-edit-free-end">
+      </div>
+      <div class="form-group">
+        <label class="form-label">端数課金開始日</label>
+        <input type="date" class="form-control" id="svc-edit-fraction-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">端数課金終了日</label>
+        <input type="date" class="form-control" id="svc-edit-fraction-end">
+      </div>
+      <div class="form-group">
+        <label class="form-label">サイクル課金開始日 <span style="color:red">*</span></label>
+        <input type="date" class="form-control" id="svc-edit-cycle-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">サイクル課金終了日（自動更新日）</label>
+        <input type="date" class="form-control" id="svc-edit-cycle-end">
+      </div>
+    </div>
+
+    <!-- 請求・決済情報 -->
+    <div class="section-title" style="margin-bottom:10px;">■ 請求・決済</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">請求書発行日</label>
+        <input type="date" class="form-control" id="svc-edit-invoice-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">決済方法 <span style="color:red">*</span></label>
+        <select class="form-control" id="svc-edit-payment-method" onchange="document.getElementById('svc-edit-risona-group').style.display = (this.value === 'クレジットカード') ? '' : 'none';">
+          <option value="">選択してください</option>
+          <option value="クレジットカード">クレジットカード</option>
+          <option value="現金振込">現金振込</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">入金期日</label>
+        <input type="date" class="form-control" id="svc-edit-payment-due">
+      </div>
+      <div class="form-group" id="svc-edit-risona-group" style="display:none;">
+        <label class="form-label">クレジットりそなID</label>
+        <input type="text" class="form-control" id="svc-edit-risona-id">
+      </div>
+    </div>
+
+    <!-- 原価（粗利計算用） -->
+    <div class="section-title" style="margin-bottom:10px;">■ 原価情報（粗利計算用）</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="form-group">
+        <label class="form-label">月額原価（円/台）</label>
+        <input type="number" class="form-control" id="svc-edit-monthly-cost">
+      </div>
+      <div class="form-group">
+        <label class="form-label">初期登録原価（円/台）</label>
+        <input type="number" class="form-control" id="svc-edit-init-cost">
+      </div>
+    </div>
+
+    <!-- オムロンID登録 -->
+    <div class="section-title" style="margin-bottom:10px;">■ オムロンID登録（台数分）</div>
+    <div id="svc-edit-omron-rows" style="margin-bottom:16px;">
+      <!-- JSで動的生成 -->
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="generateEditOmronRows()" style="margin-bottom:16px;">
+      <i class="ti ti-refresh"></i> 台数に合わせてオムロン行を再生成
+    </button>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('service-edit-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveServiceEdit()"><i class="ti ti-check"></i> 変更を保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     サービス詳細モーダル
+     ============================================= -->
+<div class="modal-overlay" id="service-detail-modal">
+  <div class="modal" style="width:720px;max-height:90vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('service-detail-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title" id="svc-detail-title">サービス詳細</div>
+
+    <!-- タブ -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px;">
+      <button class="svc-tab-btn active" onclick="switchSvcTab('basic')" id="svc-tab-basic" style="padding:8px 18px;border:none;background:none;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px;cursor:pointer;">基本情報</button>
+      <button class="svc-tab-btn" onclick="switchSvcTab('omron')" id="svc-tab-omron" style="padding:8px 18px;border:none;background:none;font-weight:500;color:var(--text-secondary);cursor:pointer;">オムロンID</button>
+      <button class="svc-tab-btn" onclick="switchSvcTab('billing')" id="svc-tab-billing" style="padding:8px 18px;border:none;background:none;font-weight:500;color:var(--text-secondary);cursor:pointer;">課金・前受け</button>
+      <button class="svc-tab-btn" onclick="switchSvcTab('refund')" id="svc-tab-refund" style="padding:8px 18px;border:none;background:none;font-weight:500;color:var(--text-secondary);cursor:pointer;">返金</button>
+    </div>
+
+    <!-- タブ：基本情報 -->
+    <div id="svc-panel-basic">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;" id="svc-detail-basic-body">
+        <!-- JSで動的生成 -->
+      </div>
+      <div style="margin-top:16px;text-align:right;">
+        <button class="btn btn-secondary" onclick="openServiceEditFromDetail()"><i class="ti ti-pencil"></i> 編集</button>
+      </div>
+    </div>
+
+    <!-- タブ：オムロンID -->
+    <div id="svc-panel-omron" style="display:none;">
+      <table style="width:100%;border-collapse:collapse;font-size: 13px;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">台番</th>
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">オムロンID</th>
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">初期ID</th>
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">初期Password</th>
+          </tr>
+        </thead>
+        <tbody id="svc-omron-tbody">
+          <!-- JSで動的生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- タブ：課金・前受け -->
+    <div id="svc-panel-billing" style="display:none;">
+
+      <!-- 入金チェック -->
+      <div class="card" style="margin-bottom:12px;padding:12px 16px;background:#F0F6FF;">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--accent);">入金チェック</div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="svc-paid-init"> 初期登録手数料：入金済
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="svc-paid-monthly"> 月額（直近サイクル）：入金済
+          </label>
+        </div>
+      </div>
+
+      <!-- 前受け金残管理 -->
+      <div class="card" style="margin-bottom:12px;padding:12px 16px;">
+        <div style="font-weight:700;margin-bottom:8px;">前受け金・売上消化状況</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;">
+          <div style="background:var(--bg);border-radius:8px;padding:10px;">
+            <div style="font-size: 13px;color:var(--text-muted);margin-bottom:4px;">入金総額</div>
+            <div style="font-size:16px;font-weight:700;" id="svc-billing-paid-total">—</div>
+          </div>
+          <div style="background:#EAF3DE;border-radius:8px;padding:10px;">
+            <div style="font-size: 13px;color:var(--text-muted);margin-bottom:4px;">売上消化済</div>
+            <div style="font-size:16px;font-weight:700;color:#3B6D11;" id="svc-billing-consumed">—</div>
+          </div>
+          <div style="background:#FAEEDA;border-radius:8px;padding:10px;">
+            <div style="font-size: 13px;color:var(--text-muted);margin-bottom:4px;">前受け金残</div>
+            <div style="font-size:16px;font-weight:700;color:#854F0B;" id="svc-billing-deferred">—</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size: 13px;color:var(--text-muted);">
+          ※ 月次売上消化：サービス月の1日に消化確定。現在 <strong id="svc-billing-today"></strong> 時点の計算。
+        </div>
+      </div>
+
+      <!-- 粗利情報 -->
+      <div class="card" style="padding:12px 16px;">
+        <div style="font-weight:700;margin-bottom:8px;">粗利情報</div>
+        <table style="width:100%;font-size: 13px;border-collapse:collapse;">
+          <thead>
+            <tr style="background:var(--bg);">
+              <th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);"></th>
+              <th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);">売上</th>
+              <th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);">原価</th>
+              <th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);">粗利額</th>
+              <th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);">粗利率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 8px;">初期登録手数料</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-init-sales">—</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-init-cost">—</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-init-profit">—</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-init-rate">—</td>
+            </tr>
+            <tr style="background:var(--bg);">
+              <td style="padding:6px 8px;">月額（消化済累計）</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-monthly-sales">—</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-monthly-cost">—</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-monthly-profit">—</td>
+              <td style="padding:6px 8px;text-align:right;" id="svc-gp-monthly-rate">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- タブ：返金 -->
+    <div id="svc-panel-refund" style="display:none;">
+      <div style="text-align:right;margin-bottom:10px;">
+        <button class="btn btn-sm btn-secondary" onclick="openRefundEntry()"><i class="ti ti-plus"></i> 返金登録</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size: 13px;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:8px;border-bottom:1px solid var(--border);">返金日</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);">返金月数</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);">返金額</th>
+            <th style="padding:8px;border-bottom:1px solid var(--border);">返金理由</th>
+          </tr>
+        </thead>
+        <tbody id="svc-refund-tbody">
+          <tr>
+            <td colspan="4" style="padding:16px;text-align:center;color:var(--text-muted);">返金履歴なし</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- =============================================
+     返金登録モーダル
+     ============================================= -->
+<div class="modal-overlay" id="service-refund-modal">
+  <div class="modal" style="width:420px;">
+    <button class="modal-close" onclick="closeModal('service-refund-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">返金登録</div>
+    <div class="form-group">
+      <label class="form-label">返金日 <span style="color:red">*</span></label>
+      <input type="date" class="form-control" id="refund-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">返金月数</label>
+      <input type="number" class="form-control" id="refund-months" placeholder="例：3">
+    </div>
+    <div class="form-group">
+      <label class="form-label">返金額（円） <span style="color:red">*</span></label>
+      <input type="number" class="form-control" id="refund-amount" placeholder="例：2700">
+    </div>
+    <div class="form-group">
+      <label class="form-label">返金理由 <span style="color:red">*</span></label>
+      <textarea class="form-control" id="refund-reason" rows="3" placeholder="解約による返金など"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('service-refund-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveRefund()"><i class="ti ti-check"></i> 登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 11. 売上・粗利管理 ===== -->
+<section class="page" id="page-revenue">
+  <div class="page-header">
+    <div>
+      <div class="page-title">売上・粗利管理</div>
+      <div class="page-subtitle">2026年6月 — カテゴリ別集計</div>
+    </div>
+    <button class="btn btn-secondary"><i class="ti ti-download"></i> CSV出力</button>
+  </div>
+
+  <div class="kpi-grid kpi-grid-4">
+    <div class="kpi-card">
+      <div class="kpi-label">売上合計</div>
+      <div class="kpi-value">¥12,480,000</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">原価合計</div>
+      <div class="kpi-value">¥7,028,000</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">粗利</div>
+      <div class="kpi-value">¥5,452,000</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">粗利率</div>
+      <div class="kpi-value">43.7%</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>カテゴリ</th>
+          <th>枝番件数</th>
+          <th>売上</th>
+          <th>原価</th>
+          <th>粗利</th>
+          <th>粗利率</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-a">A 機器販売</span></td>
+          <td>4件</td>
+          <td>¥6,200,000</td>
+          <td>¥4,030,000</td>
+          <td>¥2,170,000</td>
+          <td><span class="badge badge-blue">35.0%</span></td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-b">B 工事提供</span></td>
+          <td>3件</td>
+          <td>¥3,800,000</td>
+          <td>¥2,204,000</td>
+          <td>¥1,596,000</td>
+          <td><span class="badge badge-green">42.0%</span></td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-c">C サブスク</span></td>
+          <td>5件</td>
+          <td>¥2,480,000</td>
+          <td>¥794,000</td>
+          <td>¥1,686,000</td>
+          <td><span class="badge badge-green">68.0%</span></td>
+        </tr>
+        <tr class="sum-row">
+          <td>合計</td>
+          <td>12件</td>
+          <td>¥12,480,000</td>
+          <td>¥7,028,000</td>
+          <td>¥5,452,000</td>
+          <td><span class="badge badge-green">43.7%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 12. 入金管理 ===== -->
+<section class="page" id="page-payments">
+  <div class="page-header">
+    <div>
+      <div class="page-title">入金管理</div>
+      <div class="page-subtitle">請求・入金ステータスの管理</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('payment-modal')"><i class="ti ti-plus"></i> 入金登録</button>
+  </div>
+
+  <div class="kpi-grid kpi-grid-3">
+    <div class="kpi-card">
+      <div class="kpi-label">入金済（今月）</div>
+      <div class="kpi-value" style="color:var(--badge-green-fg);">¥168,000</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">未入金</div>
+      <div class="kpi-value" style="color:#854F0B;">¥160,700</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">期限超過</div>
+      <div class="kpi-value" style="color:var(--badge-red-fg);">¥1,200,000</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="payment-table">
+      <thead>
+        <tr>
+          <th>枝番ID</th>
+          <th>企業名</th>
+          <th>種別</th>
+          <th>請求額</th>
+          <th>入金期限</th>
+          <th>実入金日</th>
+          <th>ステータス</th>
+        </tr>
+      </thead>
+      <tbody id="payment-tbody">
+        <tr data-id="p1">
+          <td><span class="cid-a">20260614002A01</span></td>
+          <td>オムロンSS</td>
+          <td><span class="tag tag-a">A</span></td>
+          <td>¥62,700</td>
+          <td>06/30</td>
+          <td id="paid-date-p1">—</td>
+          <td id="paid-status-p1"><span class="badge badge-yellow">未入金</span></td>
+        </tr>
+        <tr data-id="p2">
+          <td><span class="cid-a">20260614001A01</span></td>
+          <td>NTT東日本</td>
+          <td><span class="tag tag-a">A</span></td>
+          <td>¥98,000</td>
+          <td>06/30</td>
+          <td id="paid-date-p2">—</td>
+          <td id="paid-status-p2"><span class="badge badge-yellow">未入金</span></td>
+        </tr>
+        <tr data-id="p3">
+          <td><span class="cid-b">20260610001B01</span></td>
+          <td>テスト工業</td>
+          <td><span class="tag tag-b">B</span></td>
+          <td>¥1,200,000</td>
+          <td>06/10</td>
+          <td id="paid-date-p3">—</td>
+          <td id="paid-status-p3"><span class="badge badge-red">期限超過</span></td>
+        </tr>
+        <tr data-id="p4">
+          <td><span class="cid-c">20240901001C03</span></td>
+          <td>NTT東日本</td>
+          <td><span class="tag tag-c">C</span></td>
+          <td>¥120,000</td>
+          <td>06/01</td>
+          <td id="paid-date-p4">06/02</td>
+          <td id="paid-status-p4"><span class="badge badge-green">入金済</span></td>
+        </tr>
+        <tr data-id="p5">
+          <td><span class="cid-c">20260601001C01</span></td>
+          <td>サブスク商事</td>
+          <td><span class="tag tag-c">C</span></td>
+          <td>¥48,000</td>
+          <td>06/01</td>
+          <td id="paid-date-p5">06/01</td>
+          <td id="paid-status-p5"><span class="badge badge-green">入金済</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 入金登録モーダル -->
+<div class="modal-overlay" id="payment-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('payment-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">入金登録</div>
+    <div class="form-group">
+      <label class="form-label">枝番IDを選択</label>
+      <select class="form-control" id="pay-select-id">
+        <option value="p1">20260614002A01 — オムロンSS ¥62,700</option>
+        <option value="p2">20260614001A01 — NTT東日本 ¥98,000</option>
+        <option value="p3">20260610001B01 — テスト工業 ¥1,200,000</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">実入金日</label>
+      <input type="date" class="form-control" id="pay-date" value="2026-06-14">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('payment-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="registerPayment()"><i class="ti ti-check"></i> 入金済に更新</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 13. 返金管理 ===== -->
+<section class="page" id="page-refunds">
+  <div class="page-header">
+    <div>
+      <div class="page-title">返金管理</div>
+      <div class="page-subtitle">返金申請・処理状況の管理</div>
+    </div>
+    <button class="btn btn-primary"><i class="ti ti-plus"></i> 返金申請</button>
+  </div>
+
+  <div class="kpi-grid kpi-grid-3">
+    <div class="kpi-card">
+      <div class="kpi-label">処理中</div>
+      <div class="kpi-value" style="color:#854F0B;">2件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">完了（今月）</div>
+      <div class="kpi-value" style="color:var(--badge-green-fg);">1件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">返金合計</div>
+      <div class="kpi-value">¥198,000</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>枝番ID</th>
+          <th>企業名</th>
+          <th>返金理由</th>
+          <th>返金額</th>
+          <th>申請日</th>
+          <th>完了日</th>
+          <th>ステータス</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="cid-a">20260614001A01</span></td>
+          <td>NTT東日本</td>
+          <td>機器不良・交換</td>
+          <td>¥30,000</td>
+          <td>06/14</td>
+          <td>—</td>
+          <td><span class="badge badge-yellow">処理中</span></td>
+        </tr>
+        <tr>
+          <td><span class="cid-c">20260601001C01</span></td>
+          <td>サブスク商事</td>
+          <td>契約キャンセル</td>
+          <td>¥48,000</td>
+          <td>06/08</td>
+          <td>—</td>
+          <td><span class="badge badge-yellow">処理中</span></td>
+        </tr>
+        <tr>
+          <td><span class="cid-b">20251101001B01</span></td>
+          <td>NTT東日本</td>
+          <td>過払い精算</td>
+          <td>¥120,000</td>
+          <td>05/28</td>
+          <td>06/05</td>
+          <td><span class="badge badge-green">完了</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
