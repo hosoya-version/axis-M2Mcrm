@@ -176,9 +176,15 @@
       <label class="form-label">所属会社名</label>
       <input type="text" class="form-control" id="edit-member-company">
     </div>
-    <div class="form-group">
-      <label class="form-label">氏名</label>
-      <input type="text" class="form-control" id="edit-member-name">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">姓 <span style="color:red;">*</span></label>
+        <input type="text" class="form-control" id="edit-member-last-name" placeholder="例：細谷">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">名 <span style="color:red;">*</span></label>
+        <input type="text" class="form-control" id="edit-member-first-name" placeholder="例：将広">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">メールアドレス</label>
@@ -222,9 +228,15 @@
     <button class="modal-close" onclick="closeModal('modal-add-member')"><i class="ti ti-x"></i></button>
     <div class="modal-title"><i class="ti ti-user-plus" style="color:var(--accent);"></i> メンバーを追加</div>
     <div id="add-member-error" style="display:none;background:var(--badge-red-bg);color:var(--badge-red-fg);border:1px solid #f0bcbc;border-radius:8px;padding:10px 14px;font-size: 13px;font-weight:600;margin-bottom:14px;"></div>
-    <div class="form-group">
-      <label class="form-label">氏名 <span style="color:var(--badge-red-fg);">*</span></label>
-      <input type="text" class="form-control" id="add-member-name" placeholder="例）営業 太郎">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">姓 <span style="color:red;">*</span></label>
+        <input type="text" class="form-control" id="add-member-last-name" placeholder="例：細谷">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">名 <span style="color:red;">*</span></label>
+        <input type="text" class="form-control" id="add-member-first-name" placeholder="例：将広">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">ログインメールアドレス <span style="color:var(--badge-red-fg);">*</span></label>

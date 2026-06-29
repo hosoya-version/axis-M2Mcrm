@@ -2690,7 +2690,7 @@ async function renderMembersTable(filter) {
   if (!sb) return;
   const { data: rows, error } = await sb
     .from('members')
-    .select('last_name, first_name, email, role, is_initial_pw, auth_uid')
+    .select('last_name, first_name, email, role, is_initial_pw, phone, company')
     .order('created_at', { ascending: true });
   if (error) {
     console.error('members取得エラー:', error);
@@ -2702,12 +2702,14 @@ async function renderMembersTable(filter) {
   MEMBERS_DB.length = 0;
   rows.forEach(r => {
     MEMBERS_DB.push({
-      email: r.email,
-      name: (r.last_name || '') + ' ' + (r.first_name || ''),
-      role: r.role || 'user',
+      email:       r.email         || '',
+      lastName:    r.last_name     || '',
+      firstName:   r.first_name    || '',
+      name:        ((r.last_name || '') + ' ' + (r.first_name || '')).trim(),
+      role:        r.role          || 'user',
       isInitialPw: r.is_initial_pw || false,
-      phone: r.phone || '',
-      company: r.company || ''
+      phone:       r.phone         || '',
+      company:     r.company       || ''
     });
   });
 
@@ -2725,7 +2727,8 @@ async function renderMembersTable(filter) {
     const roleBadge = m.role === 'admin'
       ? '<span class="badge badge-blue">管理者</span>'
       : '<span class="badge badge-gray">一般</span>';
-    const phone = m.phone || '—';
+    const phone   = m.phone   || '—';
+    const company = m.company || '—';
     const isCurrentUser = window.currentUser && window.currentUser.email === m.email;
     const deleteBtn = isCurrentUser
       ? `<button class="btn btn-sm btn-danger" style="opacity:0.4;cursor:not-allowed;" disabled title="自分自身は削除できません"><i class="ti ti-trash"></i> 削除</button>`
@@ -2734,7 +2737,7 @@ async function renderMembersTable(filter) {
       ? `<button onclick="confirmPasswordInit('${m.email}', '${m.name}')" style="background:#f97316; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size: 13px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:4px;">&#128276; PW初期化待ち</button>`
       : `<button class="btn btn-sm btn-secondary" onclick="confirmPasswordInit('${m.email}', '${m.name}')"><i class="ti ti-key"></i> パスワード変更</button>`;
     return `<tr>
-      <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;" title="${m.company}">${m.company}</td>
+      <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;" title="${company}">${company}</td>
       <td class="fw-700" style="white-space:nowrap;">${m.name}</td>
       <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;" title="${m.email}">${m.email}</td>
       <td style="white-space:nowrap;">${phone}</td>
@@ -2765,34 +2768,43 @@ function openEditMember(email) {
   if (!m) return;
   _editTargetEmail = email;
   document.getElementById('edit-member-email-orig').value = email;
-  document.getElementById('edit-member-company').value = m.company || '';
-  document.getElementById('edit-member-name').value = m.name || '';
+  // 姓・名・会社・電話を個別フィールドにセット
+  const lastNameEl  = document.getElementById('edit-member-last-name');
+  const firstNameEl = document.getElementById('edit-member-first-name');
+  const companyEl   = document.getElementById('edit-member-company');
+  const phoneEl     = document.getElementById('edit-member-phone');
+  if (lastNameEl)  lastNameEl.value  = m.lastName  || '';
+  if (firstNameEl) firstNameEl.value = m.firstName || '';
+  if (companyEl)   companyEl.value   = m.company   || '';
+  if (phoneEl)     phoneEl.value     = m.phone     || '';
   document.getElementById('edit-member-email').value = m.email || '';
-  document.getElementById('edit-member-phone').value = m.phone || '';
   document.getElementById('edit-member-role').value = m.role || 'user';
   openModal('member-edit-modal');
 }
 
 async function saveMemberEdit() {
-  // 注: このフォームは氏名を1フィールド(edit-member-name)で扱うため、
-  //     スペースで姓・名に分割して last_name / first_name に保存する。
-  const origEmail = document.getElementById('edit-member-email-orig').value;
+  // 姓・名・会社・電話を個別フィールドから取得してSupabaseへ保存
+  const origEmail = document.getElementById('edit-member-email-orig')
+    ? document.getElementById('edit-member-email-orig').value
+    : '';
+  const lastName  = (document.getElementById('edit-member-last-name')  || {}).value?.trim() || '';
+  const firstName = (document.getElementById('edit-member-first-name') || {}).value?.trim() || '';
+  const company   = (document.getElementById('edit-member-company')    || {}).value?.trim() || '';
+  const phone     = (document.getElementById('edit-member-phone')      || {}).value?.trim() || '';
   const newRole   = document.getElementById('edit-member-role').value;
-  const fullName  = document.getElementById('edit-member-name') ? document.getElementById('edit-member-name').value.trim() : '';
-  const nameParts = fullName ? fullName.split(/\s+/) : [];
-  const lastName  = nameParts[0] || '';
-  const firstName = nameParts.slice(1).join(' ');
 
   const sb = window._sb;
   if (!sb) return;
 
-  const updateData = { role: newRole };
-  if (lastName)  updateData.last_name  = lastName;
-  if (firstName) updateData.first_name = firstName;
-
   const { error } = await sb
     .from('members')
-    .update(updateData)
+    .update({
+      last_name:  lastName,
+      first_name: firstName,
+      company:    company,
+      phone:      phone,
+      role:       newRole
+    })
     .eq('email', origEmail);
 
   if (error) {
@@ -2803,11 +2815,12 @@ async function saveMemberEdit() {
   // 自分自身を編集した場合はwindow.currentUserも更新
   if (window.currentUser && window.currentUser.email === origEmail) {
     window.currentUser.role = newRole;
-    if (lastName && firstName) window.currentUser.name = lastName + ' ' + firstName;
+    window.currentUser.name = (lastName + ' ' + firstName).trim();
     const label = document.getElementById('sidebar-user-label');
     if (label) label.textContent = window.currentUser.name + (window.currentUser.role === 'admin' ? '（管理者）' : '');
   }
 
+  // モーダルを閉じてテーブル再描画（実モーダルIDは member-edit-modal）
   closeModal('member-edit-modal');
   renderMembersTable('');
 }
@@ -2876,10 +2889,8 @@ async function executeDeleteMember() {
 // メンバー追加モーダル
 // =========================================================
 function openAddMemberModal() {
-  document.getElementById('add-member-name').value = '';
-  document.getElementById('add-member-email').value = '';
-  document.getElementById('add-member-company').value = '';
-  document.getElementById('add-member-phone').value = '';
+  ['add-member-last-name','add-member-first-name','add-member-email','add-member-company','add-member-phone']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('add-member-role').value = 'user';
   const errEl = document.getElementById('add-member-error');
   errEl.style.display = 'none';
@@ -2888,19 +2899,21 @@ function openAddMemberModal() {
 }
 
 async function submitAddMember() {
-  // 注: 氏名は1フィールド(add-member-name)。スペースで姓・名に分割して保存。
-  //     members テーブルに phone / company カラムは存在しないため insert しない。
-  const fullName  = document.getElementById('add-member-name') ? document.getElementById('add-member-name').value.trim() : '';
-  const email     = document.getElementById('add-member-email').value.trim();
+  // 姓・名・会社・電話を個別フィールドから取得してSupabaseへ保存
+  const lastName  = (document.getElementById('add-member-last-name')  || {}).value?.trim() || '';
+  const firstName = (document.getElementById('add-member-first-name') || {}).value?.trim() || '';
+  const company   = (document.getElementById('add-member-company')    || {}).value?.trim() || '';
+  const phone     = (document.getElementById('add-member-phone')      || {}).value?.trim() || '';
+  const email     = (document.getElementById('add-member-email')      || {}).value?.trim() || '';
   const role      = document.getElementById('add-member-role').value;
   const errEl     = document.getElementById('add-member-error');
-  const nameParts = fullName ? fullName.split(/\s+/) : [];
-  const lastName  = nameParts[0] || '';
-  const firstName = nameParts.slice(1).join(' ');
 
+  if (!lastName) {
+    if (errEl) { errEl.textContent = '姓を入力してください'; errEl.style.display = 'block'; }
+    return;
+  }
   if (!email) {
-    errEl.textContent = 'メールアドレスを入力してください。';
-    errEl.style.display = 'block';
+    if (errEl) { errEl.textContent = 'メールアドレスを入力してください'; errEl.style.display = 'block'; }
     return;
   }
 
@@ -2910,16 +2923,17 @@ async function submitAddMember() {
   const { error } = await sb
     .from('members')
     .insert({
-      last_name:     lastName  || '未設定',
-      first_name:    firstName || '',
+      last_name:     lastName,
+      first_name:    firstName,
+      company:       company,
+      phone:         phone,
       email:         email,
       role:          role,
       is_initial_pw: true
     });
 
   if (error) {
-    errEl.textContent = '追加エラー: ' + error.message;
-    errEl.style.display = 'block';
+    if (errEl) { errEl.textContent = '追加エラー: ' + error.message; errEl.style.display = 'block'; }
     return;
   }
 
