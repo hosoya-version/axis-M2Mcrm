@@ -133,6 +133,8 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
       });
     } else if (item.dataset.page === 'temp-products') {
       renderTempProductTable();
+    } else if (item.dataset.page === 'payments') {
+      loadUnpaidPayments();
     }
   });
 });
@@ -2277,22 +2279,71 @@ async function confirmRenewal() {
   }
 }
 
-// ===== 入金登録 =====
-function registerPayment() {
-  const id = document.getElementById('pay-select-id').value;
-  const dateVal = document.getElementById('pay-date').value;
+// ===== 入金登録（Supabase） =====
+// 未請求の枝番を3テーブルから取得して入金登録selectに反映
+async function loadUnpaidPayments() {
+  const sb = window._sb;
+  const sel = document.getElementById('pay-select-id');
+  if (!sb || !sel) return;
+
+  const tables = [
+    ['sales_a',        'A 機器販売'],
+    ['construction_b', 'B 工事管理'],
+    ['service_c',      'C サービス']
+  ];
+  const opts = [];
+  for (const [t, label] of tables) {
+    const { data, error } = await sb
+      .from(t)
+      .select('branch_id, unit_price, billing_status')
+      .eq('billing_status', '未請求')
+      .order('branch_id', { ascending: true });
+    if (error) { console.error(t + ' 未請求取得エラー:', error); continue; }
+    (data || []).forEach(r => {
+      const price = (r.unit_price != null ? r.unit_price : 0).toLocaleString();
+      opts.push(`<option value="${t}::${r.branch_id}">${r.branch_id} — ${label} ¥${price}</option>`);
+    });
+  }
+  sel.innerHTML = opts.length
+    ? opts.join('')
+    : '<option value="">未入金（未請求）の枝番はありません</option>';
+}
+
+// 入金登録モーダルを開く（最新の未請求一覧をロードしてから表示）
+async function openPaymentModal() {
+  await loadUnpaidPayments();
+  openModal('payment-modal');
+}
+
+async function registerPayment() {
+  const sb = window._sb;
+  const sel = document.getElementById('pay-select-id');
+  const val = sel ? sel.value : '';
+  const dateVal = document.getElementById('pay-date')?.value;
+
+  if (!val) { alert('入金対象の枝番を選択してください'); return; }
   if (!dateVal) { alert('入金日を入力してください'); return; }
 
-  const parts = dateVal.split('-');
-  const formatted = parts[1] + '/' + parts[2];
+  const [table, branchId] = val.split('::');
+  if (!table || !branchId) { alert('対象の形式が不正です'); return; }
 
-  const dateEl = document.getElementById('paid-date-' + id);
-  const statusEl = document.getElementById('paid-status-' + id);
-  if (dateEl) dateEl.textContent = formatted;
-  if (statusEl) statusEl.innerHTML = '<span class="badge badge-green">入金済</span>';
+  try {
+    const { error } = await sb
+      .from(table)
+      .update({ billing_status: '入金済' })
+      .eq('branch_id', branchId);
+    if (error) throw error;
 
-  alert(`✓ 入金登録が完了しました（モック）\n${formatted} 入金済に更新`);
-  closeModal('payment-modal');
+    alert(`✓ 入金登録が完了しました\n${branchId} を「入金済」に更新（入金日 ${dateVal}）`);
+    closeModal('payment-modal');
+
+    if (typeof loadOrders === 'function') await loadOrders();
+    await loadUnpaidPayments();
+
+  } catch (err) {
+    console.error('registerPayment error:', err);
+    alert('入金登録に失敗しました: ' + (err.message || err));
+  }
 }
 
 // ===== モーダル共通 =====
