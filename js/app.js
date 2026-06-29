@@ -757,11 +757,45 @@ async function loadOrders() {
     };
   });
 
-  // 9. 案件一覧画面が表示中なら再描画
+  // 9. KPI集計を実データで更新（一覧と数字を一致させる）
+  loadOrderStats();
+
+  // 10. 案件一覧画面が表示中なら再描画
   const section = document.getElementById('page-orders') || document.getElementById('section-orders');
   if (section && section.classList.contains('active')) {
     renderOrderTable(window.ordersData);
   }
+}
+
+// 案件管理KPI（今月の申込書・発行済み枝番・累計）を window.ordersData から集計。
+// ハードコードされた固定値（6件/8件/89件）を実データで上書きする。
+function loadOrderStats() {
+  const orders = window.ordersData || [];
+
+  // 累計申込書 = アクシスID（親）の総数
+  const total = orders.length;
+
+  // 今月の申込書（date は "YYYY/MM/DD" 形式）
+  const now = new Date();
+  const ym = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/';
+  const monthCount = orders.filter(o => (o.date || '').startsWith(ym)).length;
+
+  // 発行済み枝番（A/B/C 別）
+  let a = 0, b = 0, c = 0;
+  orders.forEach(o => {
+    (o.children || []).forEach(ch => {
+      if (ch.tag === 'a') a++;
+      else if (ch.tag === 'b') b++;
+      else if (ch.tag === 'c') c++;
+    });
+  });
+  const branchTotal = a + b + c;
+
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('orders-kpi-month',    monthCount + '件');
+  set('orders-kpi-total',    total + '件');
+  set('orders-kpi-branches', branchTotal + '件');
+  set('orders-kpi-sub',      `A:${a} B:${b} C:${c}（現行）`);
 }
 
 function renderOrderTable(data) {
