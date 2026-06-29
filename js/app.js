@@ -2,10 +2,10 @@
  * AxisCRM — ダミーデータ & ロジック
  *
  * ID採番ルール:
- *   親ID   : YYYYMMDD + 3桁連番  例: 20260614001
- *   枝番A  : 親ID + "A" + 2桁連番  例: 20260614001A01
- *   枝番B  : 親ID + "B" + 2桁連番  例: 20260614001B01
- *   枝番C  : 親ID + "C" + 2桁連番  例: 20260614001C01
+ *   アクシスID   : YYYYMMDD + 3桁連番  例: 20260614001
+ *   枝番A  : アクシスID + "A" + 2桁連番  例: 20260614001A01
+ *   枝番B  : アクシスID + "B" + 2桁連番  例: 20260614001B01
+ *   枝番C  : アクシスID + "C" + 2桁連番  例: 20260614001C01
  *              Cは年次更新のたびに連番が増加 (C01→C02→C03...)
  *   枝番A02: 同一申込書への追加発注時のみ発行
  */
@@ -135,6 +135,12 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
       renderTempProductTable();
     } else if (item.dataset.page === 'payments') {
       loadUnpaidPayments();
+    } else if (item.dataset.page === 'sales-a') {
+      // 機器販売（A）は loadOrders が salesAData を投入するため、
+      // 最新データを取得してから描画する
+      loadOrders().then(() => renderSalesATable());
+    } else if (item.dataset.page === 'sales-b') {
+      loadOrders().then(() => { if (typeof renderSalesBTable === 'function') renderSalesBTable(); });
     } else if (item.dataset.page === 'sales-c') {
       renderServiceCList();
     }
@@ -144,6 +150,7 @@ document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
 // 初回ロード時の初期化
 document.addEventListener('DOMContentLoaded', () => {
   loadOrders();
+  loadCompanies();   // 初回から企業の「アクシスID数／担当者数」を集計して表示
   applyCompanyFilter();
   initContactFilter();
   applyContactFilter();
@@ -169,11 +176,13 @@ async function loadCompanies() {
     .select('id, company_name, company_name_kana, phone, fax, postal_code, address');
   if (cErr) { console.error('companies取得エラー:', cErr); return; }
 
-  // branches テーブルから集計
-  const { data: branches, error: bErr } = await sb
-    .from('branches')
-    .select('id, company_id');
-  if (bErr) { console.error('branches取得エラー:', bErr); return; }
+  // axis_ids テーブルから「アクシスID数」を集計（アクシスID＝アクシスIDの件数）
+  // 旧コードは branches（枝番）を数えていたため、列見出し「アクシスID数」と
+  // 意味がずれ、枝番未登録の企業が常に 0 件になっていた。
+  const { data: axisIds, error: axErr } = await sb
+    .from('axis_ids')
+    .select('axis_id, company_id');
+  if (axErr) { console.error('axis_ids取得エラー:', axErr); return; }
 
   // contacts テーブルから集計
   const { data: contacts, error: ctErr } = await sb
@@ -183,7 +192,7 @@ async function loadCompanies() {
 
   // 企業ごとに件数を集計してマージ（表示用カラム名に変換）
   companiesData = companies.map(c => {
-    const axisIdCount = branches.filter(b => b.company_id === c.id).length;
+    const axisIdCount = axisIds ? axisIds.filter(a => a.company_id === c.id).length : 0;
     const contactCount = contacts ? contacts.filter(ct => ct.company_id === c.id).length : 0;
     return {
       id:           c.id,
@@ -248,8 +257,8 @@ function jumpToAxisList(companyName) {
   if (subtitle) subtitle.textContent = companyName + ' の案件（アクシスID）一覧';
   if (clearBtn) clearBtn.style.display = 'inline-flex';
 
-  const companyFilter = document.getElementById('order-company-filter');
-  if (companyFilter) companyFilter.value = companyName;
+  // 企業フィルタはプルダウンを廃止し、選択中企業をグローバル変数で保持する
+  selectedOrderCompany = companyName;
   applyOrderFilter();
 }
 
@@ -329,6 +338,11 @@ async function loadContacts() {
     return;
   }
 
+  // 担当者一覧が空になる場合、まず Supabase で contacts の中身を確認:
+  //   -- SELECT id, company_id, last_name, first_name FROM contacts;
+  // 旧コードは companies ( name ) を埋め込んでいたが、companies の実カラムは
+  // company_name のため埋め込みクエリ全体がエラーになり、contactsData が空になっていた。
+  // branches ( name ) も列名未確認のため埋め込みを外し、クエリの依存を最小化する。
   const { data, error } = await sb
     .from('contacts')
     .select(`
@@ -344,8 +358,7 @@ async function loadContacts() {
       role,
       is_main,
       notes,
-      companies ( name ),
-      branches ( name )
+      companies ( company_name )
     `)
     .order('last_name', { ascending: true });
 
@@ -364,8 +377,8 @@ async function loadContacts() {
     // 画面表示用の結合フィールド
     name:         `${c.last_name ?? ''} ${c.first_name ?? ''}`.trim(),
     furigana:     `${c.last_name_kana ?? ''} ${c.first_name_kana ?? ''}`.trim(),
-    companyName:  c.companies?.name ?? '—',
-    branchName:   c.branches?.name  ?? '—',
+    companyName:  c.companies?.company_name ?? '—',
+    branchName:   '—',
     email:        c.email  ?? '—',
     phone:        c.phone  ?? '—',
     tel:          c.phone  ?? '—',
@@ -429,7 +442,7 @@ async function loadOrders() {
   const sb = window._sb;
   if (!sb) return;
 
-  // 1. axis_ids（親ID一覧）を取得
+  // 1. axis_ids（アクシスID一覧）を取得
   const { data: axisRows, error: axisErr } = await sb
     .from('axis_ids')
     .select(`
@@ -690,7 +703,7 @@ function renderOrderTable(data) {
       <td>${order.date}</td>
       <td>${typesHtml}</td>
       <td>${order.branchCountText}</td>
-      <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation()"><i class="ti ti-eye"></i> 詳細</button></td>
+      <td><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openAxisDetailModal('${order.pid}')"><i class="ti ti-eye"></i> 詳細</button></td>
     `;
     tbody.appendChild(trParent);
 
@@ -715,23 +728,128 @@ function renderOrderTable(data) {
   });
 }
 
+// 案件一覧で選択中の企業名（企業一覧からの遷移時にセット）。
+// 企業名プルダウンは廃止し、この変数だけで絞り込みを行う。
+let selectedOrderCompany = '';
+
+// =========================================================
+// アクシスID詳細モーダル（詳細ボタン）／ 管理者向け削除
+// =========================================================
+function openAxisDetailModal(pid) {
+  const order = (window.ordersData || []).find(o => o.pid === pid);
+  if (!order) { alert('アクシスIDが見つかりません: ' + pid); return; }
+
+  const isAdmin = !!(window.currentUser && window.currentUser.role === 'admin');
+
+  const childrenHtml = (order.children || []).map(c => {
+    const delBtn = isAdmin
+      ? `<button onclick="deleteAxisBranch('${order.pid}','${c.cid}','${c.tag}')"
+           style="padding:3px 10px;background:#ef4444;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;">枝番削除</button>`
+      : '';
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;"><span class="cid-${c.tag}">${c.cid}</span></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${c.desc}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${delBtn}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="3" style="padding:10px;color:#888;">枝番はありません</td></tr>';
+
+  const adminDeleteAxis = isAdmin
+    ? `<button onclick="deleteAxisId('${order.pid}')"
+         style="padding:8px 16px;background:#b91c1c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
+         <i class="ti ti-trash"></i> アクシスID削除（枝番含む）</button>`
+    : '';
+
+  // 既存のオーバーレイがあれば除去
+  const existing = document.getElementById('axis-detail-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'axis-detail-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10002;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = (e) => { if (e.target === overlay) closeAxisDetailModal(); };
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:640px;max-height:85vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:18px;font-weight:700;">アクシスID詳細：${order.pid}</div>
+        <button onclick="closeAxisDetailModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="font-size:13px;line-height:1.9;margin-bottom:16px;">
+        <div><b>企業名：</b>${order.company || '—'}</div>
+        <div><b>担当者：</b>${order.contact || '—'}</div>
+        <div><b>申込日：</b>${order.date || '—'}</div>
+        <div><b>取引種別：</b>${(order.types || []).join('・') || '—'}</div>
+      </div>
+      <div style="font-weight:700;margin-bottom:8px;">枝番一覧（${(order.children || []).length}件）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px;">
+        <thead><tr style="background:#f5f5f5;">
+          <th style="padding:6px 8px;text-align:left;">枝番ID</th>
+          <th style="padding:6px 8px;text-align:left;">内容</th>
+          <th style="padding:6px 8px;text-align:center;width:90px;">操作</th>
+        </tr></thead>
+        <tbody>${childrenHtml}</tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        ${adminDeleteAxis}
+        <button onclick="closeAxisDetailModal()" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">閉じる</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function closeAxisDetailModal() {
+  const overlay = document.getElementById('axis-detail-overlay');
+  if (overlay) overlay.remove();
+}
+
+// 枝番タグ → 子テーブル名のマッピング
+const _branchTableByTag = { a: 'sales_a', b: 'construction_b', c: 'service_c' };
+
+// 枝番を1件削除（管理者のみ）
+async function deleteAxisBranch(pid, cid, tag) {
+  if (!window.currentUser || window.currentUser.role !== 'admin') { alert('権限がありません。'); return; }
+  if (!confirm(`枝番「${cid}」を削除します。よろしいですか？`)) return;
+  const sb = window._sb;
+  if (!sb) return;
+  const table = _branchTableByTag[tag];
+  if (!table) { alert('不明な枝番種別: ' + tag); return; }
+  const { error } = await sb.from(table).delete().eq('branch_id', cid);
+  if (error) { alert('枝番削除エラー: ' + error.message); return; }
+  await loadOrders();
+  applyOrderFilter();
+  openAxisDetailModal(pid); // 残りの枝番で再描画
+}
+
+// アクシスID（親）と紐づく全枝番を削除（管理者のみ）
+async function deleteAxisId(pid) {
+  if (!window.currentUser || window.currentUser.role !== 'admin') { alert('権限がありません。'); return; }
+  if (!confirm(`アクシスID「${pid}」と紐づく全枝番（機器販売A・工事B・サービスC）を削除します。\nこの操作は元に戻せません。よろしいですか？`)) return;
+  const sb = window._sb;
+  if (!sb) return;
+
+  // 子テーブル → 親（axis_ids）の順に削除
+  const childTables = ['sales_a', 'construction_b', 'service_c'];
+  for (const table of childTables) {
+    const { error } = await sb.from(table).delete().eq('axis_id', pid);
+    if (error) { alert(`${table} の削除エラー: ` + error.message); return; }
+  }
+  const { error: axErr } = await sb.from('axis_ids').delete().eq('axis_id', pid);
+  if (axErr) { alert('axis_ids の削除エラー: ' + axErr.message); return; }
+
+  closeAxisDetailModal();
+  await loadOrders();
+  applyOrderFilter();
+  alert(`アクシスID「${pid}」を削除しました。`);
+}
+
 let orderFilterInitialized = false;
 function initOrderFilter() {
-  const select = document.getElementById('order-company-filter');
-  if (!select || orderFilterInitialized) return;
-  const companies = [...new Set((window.ordersData || []).map(o => o.company))];
-  companies.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    select.appendChild(opt);
-  });
+  // 企業名プルダウンは廃止したため、ここでの初期化処理は不要。
   orderFilterInitialized = true;
 }
 
 function applyOrderFilter() {
   const q = document.getElementById('order-search-input')?.value.trim().toLowerCase() || '';
-  const companyFilter = document.getElementById('order-company-filter')?.value || '';
+  const companyFilter = selectedOrderCompany || '';
 
   const filtered = (window.ordersData || []).filter(o => {
     const matchQ = o.pid.includes(q) || o.company.toLowerCase().includes(q) || o.contact.toLowerCase().includes(q) || (o.children && o.children.some(c => c.cid.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q)));
@@ -744,9 +862,8 @@ function applyOrderFilter() {
 
 function clearOrderFilter() {
   const searchInput = document.getElementById('order-search-input');
-  const companyFilter = document.getElementById('order-company-filter');
   if (searchInput) searchInput.value = '';
-  if (companyFilter) companyFilter.value = '';
+  selectedOrderCompany = '';
 
   const subtitle = document.getElementById('orders-subtitle');
   const clearBtn = document.getElementById('orders-clear-filter');
@@ -1035,7 +1152,7 @@ function openAgencyEditModal(agencyId) {
   openModal('agency-modal');
 }
 
-function saveAgency() {
+async function saveAgency() {
   const editId = document.getElementById('agency-edit-id').value;
   const name = document.getElementById('agency-name').value.trim();
   if (!name) { alert('代理店名を入力してください'); return; }
@@ -1043,22 +1160,45 @@ function saveAgency() {
   const tel = document.getElementById('agency-tel').value.trim();
   const email = document.getElementById('agency-email').value.trim();
   const address = document.getElementById('agency-address').value.trim();
-  // 複数企業名を配列で取得
+  // 複数企業名を配列で取得（「＋追加」で増えた入力欄もすべて拾う）
   const linkedCompanies = Array.from(
     document.querySelectorAll('.agency-company-input')
   ).map(input => input.value.trim()).filter(v => v !== '');
   const linkedAxisIds = Array.from(document.querySelectorAll('.agency-axis-id-input')).map(input => input.value.trim()).filter(v => v !== '');
 
+  const sb = window._sb;
+  if (!sb) { alert('システム初期化中です。もう一度お試しください。'); return; }
+
+  // 紐づく企業・アクシスIDは専用カラム／中間テーブルが未確定のため、
+  // 当面は notes に集約して保存する（情報が失われないようにする暫定対応）。
+  const noteParts = [];
+  if (email) noteParts.push('Email: ' + email);
+  if (linkedCompanies.length) noteParts.push('紐づく企業: ' + linkedCompanies.join('、'));
+  if (linkedAxisIds.length) noteParts.push('紐づくアクシスID: ' + linkedAxisIds.join('、'));
+  const notes = noteParts.join(' / ');
+
+  const record = {
+    agency_name:      name,
+    agency_name_kana: furigana,
+    phone:            tel,
+    address:          address,
+    notes:            notes
+  };
+
+  let error;
   if (editId) {
-    const id = parseInt(editId, 10);
-    const index = agenciesData.findIndex(a => a.id === id);
-    if (index !== -1) agenciesData[index] = { id, name, furigana, tel, email, address, linkedCompanies, linkedAxisIds };
+    ({ error } = await sb.from('agencies').update(record).eq('id', editId));
   } else {
-    const newId = agenciesData.length > 0 ? Math.max(...agenciesData.map(a => a.id)) + 1 : 1;
-    agenciesData.push({ id: newId, name, furigana, tel, email, address, linkedCompanies, linkedAxisIds });
+    ({ error } = await sb.from('agencies').insert([record]));
   }
+
+  if (error) {
+    alert('代理店の保存に失敗しました: ' + error.message);
+    return;
+  }
+
   closeModal('agency-modal');
-  renderAgencyTable();
+  await renderAgencyTable();
 }
 
 function deleteAgency(id) {
@@ -1553,9 +1693,36 @@ function applyExtraction(ex) {
   setVal('s1-address',      fld('address').value);
   setVal('s1-email',        fld('email').value);
   setVal('s1-dept',         fld('department').value);
+  // D-3: お申込日（YYYY-MM-DD）／ D-2: 備考・特記事項
+  setVal('s1-date',         fld('apply_date').value);
+  setVal('s1-notes',        fld('notes').value);
+
+  // D-6: サブスク記載が無い（subscription === null）場合は C 項目セクションを非表示にする
+  applySubscriptionVisibility(ex ? ex.subscription : undefined);
+
   validateStep1();
 
   renderExtractionTable(ex);
+}
+
+// subscription が null（サブスク記載なし）の場合に C 項目セクションを隠す。
+// subscription オブジェクトがある場合は表示し、可能なら月額・台数を反映する。
+function applySubscriptionVisibility(subscription) {
+  const cSection = document.getElementById('step4-c-section');
+  const includeC = document.getElementById('include-c');
+  if (subscription === null) {
+    if (cSection) cSection.style.display = 'none';
+    if (includeC) includeC.checked = false;
+    return;
+  }
+  if (cSection) cSection.style.display = '';
+  if (includeC) includeC.checked = true;
+  if (subscription && typeof subscription === 'object') {
+    const priceEl = document.getElementById('step4-subsc-price');
+    const qtyEl   = document.getElementById('step4-subsc-qty');
+    if (priceEl && subscription.monthly_unit_price) priceEl.value = subscription.monthly_unit_price;
+    if (qtyEl   && subscription.unit_count)         qtyEl.value   = subscription.unit_count;
+  }
 }
 
 // Step2「申込書読み取り結果」テーブルを実APIレスポンスで描画
@@ -2325,7 +2492,7 @@ async function confirmRenewal() {
     newEnd.setFullYear(newEnd.getFullYear() + 1);
     newEnd.setDate(newEnd.getDate() - 1);
 
-    // 3. service_c に更新レコードを INSERT（axis_idは親IDのまま、枝番Cをインクリメント）
+    // 3. service_c に更新レコードを INSERT（axis_idはアクシスIDのまま、枝番Cをインクリメント）
     const { data: rec, error: iErr } = await sb.from('service_c').insert({
       axis_id:          orig.axis_id,
       branch_id:        newBranchId,
@@ -2905,6 +3072,16 @@ async function executeDeleteMember() {
   const sb = window._sb;
   if (!sb) return;
 
+  // TODO: Edge Function「delete-member」の実装・デプロイが必要。
+  //       本来は service_role 権限で auth.users と members を一括削除すべき。
+  //       現状は members テーブルのみ削除し、Auth ユーザーは残る（暫定対応）。
+  //       Edge Function 実装後は以下の fetch を有効化し、members の直接削除を置き換える:
+  //   await fetch(SUPABASE_URL + '/functions/v1/delete-member', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+  //                'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token },
+  //     body: JSON.stringify({ email })
+  //   });
   const { error } = await sb
     .from('members')
     .delete()
@@ -2914,6 +3091,11 @@ async function executeDeleteMember() {
     alert('削除エラー: ' + error.message);
     return;
   }
+
+  console.warn(
+    `[delete-member] members から「${email}」を削除しましたが、auth.users のアカウントは残っています。` +
+    ' Auth ユーザーを完全削除するには Edge Function「delete-member」（service_role）の実装・デプロイが必要です。'
+  );
 
   closeModal('member-delete-modal');
   await renderMembersTable('');
@@ -3424,18 +3606,74 @@ function renderSvcBilling(d) {
   document.getElementById('svc-gp-monthly-rate').textContent = monthlyRate + '%';
 }
 
-/* --- 詳細：オムロンID描画 --- */
+/* --- 詳細：オムロンID描画（インライン編集対応） --- */
+var _omronCellStyle = 'padding:6px;border-bottom:1px solid var(--border);';
+var _omronInputStyle = 'width:100%;padding:5px 6px;border:1px solid #d1d5db;border-radius:5px;font-size:13px;box-sizing:border-box;';
+
 function renderOmronTable(rows) {
   var html = '';
-  rows.forEach(function(r) {
+  (rows || []).forEach(function(r, i) {
     html += '<tr>'
-          + '<td style="padding:8px;border-bottom:1px solid var(--border);">' + r.num + '台目</td>'
-          + '<td style="padding:8px;border-bottom:1px solid var(--border);">' + r.omronId + '</td>'
-          + '<td style="padding:8px;border-bottom:1px solid var(--border);">' + r.initId + '</td>'
-          + '<td style="padding:8px;border-bottom:1px solid var(--border);">' + r.initPw + '</td>'
+          + '<td style="' + _omronCellStyle + '">' + (r.num || (i + 1)) + '台目</td>'
+          + '<td style="' + _omronCellStyle + '"><input style="' + _omronInputStyle + '" value="' + (r.omronId || '') + '" oninput="updateOmronRow(' + i + ',\'omronId\',this.value)"></td>'
+          + '<td style="' + _omronCellStyle + '"><input style="' + _omronInputStyle + '" value="' + (r.initId || '') + '" oninput="updateOmronRow(' + i + ',\'initId\',this.value)"></td>'
+          + '<td style="' + _omronCellStyle + '"><input style="' + _omronInputStyle + '" value="' + (r.initPw || '') + '" oninput="updateOmronRow(' + i + ',\'initPw\',this.value)"></td>'
+          + '<td style="' + _omronCellStyle + 'text-align:center;"><button onclick="deleteOmronRow(' + i + ')" style="padding:4px 8px;background:#ef4444;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;">✕</button></td>'
           + '</tr>';
   });
   document.getElementById('svc-omron-tbody').innerHTML = html;
+}
+
+function updateOmronRow(index, field, value) {
+  if (!currentService.omronRows || !currentService.omronRows[index]) return;
+  currentService.omronRows[index][field] = value;
+}
+
+function addOmronId() {
+  if (!currentService.omronRows) currentService.omronRows = [];
+  var nextNum = currentService.omronRows.length + 1;
+  currentService.omronRows.push({ num: nextNum, omronId: '', initId: '', initPw: '' });
+  renderOmronTable(currentService.omronRows);
+}
+
+function deleteOmronRow(index) {
+  if (!currentService.omronRows) return;
+  currentService.omronRows.splice(index, 1);
+  // 台番を振り直す
+  currentService.omronRows.forEach(function(r, i) { r.num = i + 1; });
+  renderOmronTable(currentService.omronRows);
+}
+
+// オムロンIDを omron_ids テーブルへ保存。
+// テーブルが未作成の場合は sql/create_omron_ids.sql を実行してください。
+async function saveOmronIds() {
+  var sb = window._sb;
+  if (!sb) { alert('システム初期化中です。もう一度お試しください。'); return; }
+  var serviceKey = currentService.id || '';
+  var rows = (currentService.omronRows || []).filter(function(r) { return (r.omronId || '').trim() !== ''; });
+
+  try {
+    // 当該サービス分を一旦削除して入れ直す（簡易な全置換）
+    await sb.from('omron_ids').delete().eq('service_id', serviceKey);
+    if (rows.length > 0) {
+      var payload = rows.map(function(r) {
+        return {
+          service_id: serviceKey,
+          unit_no:    r.num,
+          omron_id:   r.omronId,
+          initial_id: r.initId,
+          initial_pw: r.initPw
+        };
+      });
+      var res = await sb.from('omron_ids').insert(payload);
+      if (res.error) throw res.error;
+    }
+    alert('オムロンIDを保存しました（' + rows.length + '件）。');
+  } catch (e) {
+    // テーブル未作成などのケース。画面上のデータは保持される。
+    console.warn('[omron_ids] 保存に失敗しました。テーブル未作成の可能性があります（sql/create_omron_ids.sql を実行してください）:', e);
+    alert('オムロンIDの保存に失敗しました。omron_ids テーブルが未作成の可能性があります。\n詳細はコンソールを確認してください。');
+  }
 }
 
 /* --- 返金登録 --- */
@@ -3534,7 +3772,7 @@ async function saveServiceNew() {
     });
     if (cErr) throw new Error('service_c INSERT失敗: ' + cErr.message);
 
-    alert(`✓ サービスを登録しました\n親ID: ${parentId} / 枝番: ${branchId}`);
+    alert(`✓ サービスを登録しました\nアクシスID: ${parentId} / 枝番: ${branchId}`);
     closeModal('service-new-modal');
     await renderServiceCList();
     if (typeof loadOrders === 'function') await loadOrders();
@@ -3741,7 +3979,7 @@ function updateWizardComplete(ids) {
   if (!box) return;
   let html = `
     <div class="id-result-row">
-      <span class="id-result-label">親ID（申込書）</span>
+      <span class="id-result-label">アクシスID（申込書）</span>
       <span class="id-result-val pid">${ids.parent}</span>
     </div>`;
   if (ids.a) html += `

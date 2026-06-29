@@ -39,21 +39,41 @@ function parseFirstJsonObject(text: string): unknown | null {
 
 const EXTRACTION_PROMPT = `あなたは日本語の申込書PDFから情報を抽出するアシスタントです。
 添付PDFから以下の項目を抽出し、JSONオブジェクトのみを返してください（前後に説明文やコードフェンスを付けない）。
-各項目は { "value": 抽出値(文字列), "confidence": 信頼度(0〜100の整数) } の形式にしてください。
-読み取れない項目は value を空文字 ""、confidence を 0 にしてください。
 
-項目キー:
+【最重要・厳守事項】
+- PDFに実際に記載されている値のみを抽出すること。サンプル値・推測値・初期値・架空のデータは絶対に返さないこと。
+- 読み取れなかった・記載が無いフィールドは、必ず value を空文字 "" とし confidence を 0 にすること（それらしい値を捏造しない）。
+- 確信が持てない場合も空文字 "" を返すこと。
+
+各テキスト項目は { "value": 抽出値(文字列), "confidence": 信頼度(0〜100の整数) } の形式にしてください。
+
+項目キー（テキスト項目）:
 - company_name      会社名
 - company_name_kana 会社名フリガナ
-- contact_name      ご担当者名
+- contact_name      ご担当者欄に記載された氏名をそのまま抽出する。記載がなければ ""。
 - tel               電話番号(TEL)
 - fax               FAX番号
 - address           住所
 - email             メールアドレス(Email)
 - department        部署名
+- apply_date        お申込日。必ず YYYY-MM-DD 形式の文字列で正確に抽出すること。記載が無い場合は "" を返す。
+- notes             備考・特記事項。「急ぎでお願いします」等の連絡事項を含め、備考欄・特記事項欄の内容を必ず抽出する。無ければ ""。
+
+加えて、以下の構造化項目も返すこと:
+
+- products: 注文された商品の配列。各要素は
+    { "product_code": 商品コード(文字列), "quantity": 数量(整数) }
+  ・商品コードごとに数量を正確に対応させること。
+  ・数量が空欄の品目は quantity を 0 とする。
+  ・数量の記載がある品目のみ正の整数を入れる。
+  ・該当する商品行が無ければ空配列 [] を返す。
+
+- subscription: サブスクリプション項目（月額／台、契約サイクル等）が記載されている場合のみ
+    { "monthly_unit_price": 月額単価(整数), "unit_count": 台数(整数), "cycle": 契約サイクル(文字列) }
+  を返す。サブスクの記載がまったく無い場合は subscription を null（JSONのnull）にすること。
 
 出力例:
-{"company_name":{"value":"〇〇株式会社","confidence":95},"company_name_kana":{"value":"マルマルカブシキガイシャ","confidence":80},"contact_name":{"value":"山田 太郎","confidence":90},"tel":{"value":"03-0000-0000","confidence":88},"fax":{"value":"","confidence":0},"address":{"value":"東京都...","confidence":78},"email":{"value":"taro@example.co.jp","confidence":99},"department":{"value":"営業部","confidence":70}}`;
+{"company_name":{"value":"〇〇株式会社","confidence":95},"company_name_kana":{"value":"マルマルカブシキガイシャ","confidence":80},"contact_name":{"value":"山田 太郎","confidence":90},"tel":{"value":"03-0000-0000","confidence":88},"fax":{"value":"","confidence":0},"address":{"value":"東京都...","confidence":78},"email":{"value":"taro@example.co.jp","confidence":99},"department":{"value":"営業部","confidence":70},"apply_date":{"value":"2026-06-14","confidence":92},"notes":{"value":"急ぎでお願いします","confidence":85},"products":[{"product_code":"OSSAZ100R_A_CP","quantity":2},{"product_code":"OSSLTEANTB","quantity":0}],"subscription":null}`;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -90,7 +110,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [
           {
             role: "user",

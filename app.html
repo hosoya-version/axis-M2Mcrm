@@ -1002,7 +1002,7 @@
           <div class="section-title" style="margin:0;">申込書読み取り結果（手修正用）</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <label for="s1-date" style="font-size:13px;font-weight:700;color:var(--text-main);">申込日 <span style="color:red;">*</span></label>
-            <input type="date" class="form-control step1-req" id="s1-date" value="2026-06-14" oninput="validateStep1()" style="width:140px;padding:4px 8px;font-size:13px;">
+            <input type="date" class="form-control step1-req" id="s1-date" oninput="validateStep1()" style="width:140px;padding:4px 8px;font-size:13px;">
           </div>
         </div>
         <input type="hidden" id="intake-date" value="2026-06-14">
@@ -1027,13 +1027,13 @@
                 <tr>
                   <td class="ps-lbl">会社名 <span style="color:red;">*</span></td>
                   <td class="ps-val" colspan="3">
-                    <input type="text" class="form-control step1-req" id="s1-company" value="オムロン ソーシアルソリューションズ株式会社" style="padding:4px;" oninput="onOrdererInput()">
+                    <input type="text" class="form-control step1-req" id="s1-company" value="" placeholder="会社名" style="padding:4px;" oninput="onOrdererInput()">
                   </td>
                 </tr>
                 <tr>
                   <td class="ps-lbl">フリガナ <span style="color:red;">*</span></td>
                   <td class="ps-val" colspan="3">
-                    <input type="text" class="form-control step1-req" id="s1-company-kana" value="オムロンソーシアルソリューションズ" style="padding:4px;" oninput="onOrdererInput()">
+                    <input type="text" class="form-control step1-req" id="s1-company-kana" value="" placeholder="フリガナ" style="padding:4px;" oninput="onOrdererInput()">
                   </td>
                 </tr>
                 <tr>
@@ -1049,23 +1049,23 @@
                   </td>
                   <td class="ps-lbl">ご担当者 <span style="color:red;">*</span></td>
                   <td class="ps-val">
-                    <input type="text" class="form-control step1-req" id="s1-name" value="山田 健太" style="padding:4px;" oninput="onOrdererInput()">
+                    <input type="text" class="form-control step1-req" id="s1-name" value="" placeholder="ご担当者名" style="padding:4px;" oninput="onOrdererInput()">
                   </td>
                 </tr>
                 <tr>
                   <td class="ps-lbl">TEL <span style="color:red;">*</span></td>
                   <td class="ps-val">
-                    <input type="tel" class="form-control step1-req" id="s1-tel" value="03-6718-3708" style="padding:4px;" oninput="onOrdererInput()">
+                    <input type="tel" class="form-control step1-req" id="s1-tel" value="" placeholder="03-0000-0000" style="padding:4px;" oninput="onOrdererInput()">
                   </td>
                   <td class="ps-lbl">FAX</td>
                   <td class="ps-val">
-                    <input type="tel" class="form-control" id="s1-mobile" value="03-6718-3708" style="padding:4px;" oninput="onOrdererInput()">
+                    <input type="tel" class="form-control" id="s1-mobile" value="" placeholder="FAX" style="padding:4px;" oninput="onOrdererInput()">
                   </td>
                 </tr>
                 <tr>
                   <td class="ps-lbl">E-mail</td>
                   <td class="ps-val" colspan="3">
-                    <input type="email" class="form-control" id="s1-email" value="k.yamada@omron-ss.co.jp" style="padding:4px;" oninput="onOrdererInput()">
+                    <input type="email" class="form-control" id="s1-email" style="padding:4px;" oninput="onOrdererInput()">
                   </td>
                 </tr>
               </tbody>
@@ -1143,7 +1143,7 @@
                 <tr>
                   <td class="ps-lbl" style="width:110px;">備考・特記事項</td>
                   <td class="ps-val">
-                    <textarea class="form-control" id="s1-notes" rows="2" style="padding:6px;width:100%;" oninput="validateStep1()">急ぎでお願いします</textarea>
+                    <textarea class="form-control" id="s1-notes" rows="2" style="padding:6px;width:100%;" oninput="validateStep1()" placeholder="PDFの備考・特記事項を自動抽出"></textarea>
                   </td>
                 </tr>
               </tbody>
@@ -1546,7 +1546,7 @@
       </div>
 
       <!-- C サブスク -->
-      <div class="card" style="margin-bottom:18px;">
+      <div class="card" id="step4-c-section" style="margin-bottom:18px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
           <input type="checkbox" id="include-c" checked style="width:16px;height:16px;cursor:pointer;">
           <label for="include-c" style="font-size:14px;font-weight:700;cursor:pointer;"><span class="tag tag-c">C サブスクリプション</span></label>
@@ -1662,7 +1662,7 @@
 
       <div class="id-result-box" id="id-result-box" style="text-align:left;max-width:480px;margin:0 auto 24px;">
         <div class="id-result-row">
-          <span class="id-result-label">親ID（申込書）</span>
+          <span class="id-result-label">アクシスID（申込書）</span>
           <span class="id-result-val pid">20260614002</span>
         </div>
         <div class="id-result-row">
@@ -1745,15 +1745,10 @@
     <input
       type="text"
       id="order-search-input"
-      placeholder="親ID・企業名・担当者・枝番名で検索..."
+      placeholder="アクシスID・企業名・担当者・枝番名で検索..."
       oninput="applyOrderFilter()"
       style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;width:280px;"
     />
-    <!-- 企業名フィルター -->
-    <select id="order-company-filter" onchange="applyOrderFilter()"
-      style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
-      <option value="">企業名（すべて）</option>
-    </select>
     <!-- クリアボタン -->
     <button onclick="clearOrderFilter()"
       style="padding:6px 12px;border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
@@ -1765,7 +1760,7 @@
     <table id="orders-table">
       <thead>
         <tr>
-          <th>親ID</th>
+          <th>アクシスID</th>
           <th>企業名・拠点</th>
           <th>担当者</th>
           <th>申込日</th>
@@ -2362,6 +2357,10 @@
 
     <!-- タブ：オムロンID -->
     <div id="svc-panel-omron" style="display:none;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;">
+        <button class="btn btn-sm btn-secondary" onclick="addOmronId()"><i class="ti ti-plus"></i> 追加</button>
+        <button class="btn btn-sm btn-primary" onclick="saveOmronIds()"><i class="ti ti-device-floppy"></i> 保存</button>
+      </div>
       <table style="width:100%;border-collapse:collapse;font-size: 13px;">
         <thead>
           <tr style="background:var(--bg);">
@@ -2369,6 +2368,7 @@
             <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">オムロンID</th>
             <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">初期ID</th>
             <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">初期Password</th>
+            <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border);width:60px;">操作</th>
           </tr>
         </thead>
         <tbody id="svc-omron-tbody">
