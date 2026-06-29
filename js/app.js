@@ -1196,85 +1196,56 @@ function saveProductEdit() {
   renderProductTable();
 }
 
-// ===== 臨時商品マスタ：モックデータ =====
-let tempProductsData = [
-  {
-    id: 1,
-    code: 'TEMP-001',
-    name: '\u7279\u6b8a\u30bb\u30f3\u30b5\u30fc\u30e6\u30cb\u30c3\u30c8A',
-    price: 85000,
-    cost: 52000,
-    unit: '\u500b',
-    note: '\u901a\u5e38\u30e9\u30a4\u30f3\u30ca\u30c3\u30d7\u5916\u306e\u7279\u6ce8\u54c1',
-    isChecked: false,
-    checkedBy: null,
-    checkedAt: null,
-    priceHistory: []
-  },
-  {
-    id: 2,
-    code: 'TEMP-002',
-    name: '\u30ab\u30b9\u30bf\u30e0\u5236\u5fa1\u30dc\u30fc\u30c9',
-    price: 120000,
-    cost: 78000,
-    unit: '\u679a',
-    note: '\u4e00\u6642\u7684\u306a\u4ee3\u66ff\u54c1\u3068\u3057\u3066\u4f7f\u7528',
-    isChecked: true,
-    checkedBy: '\u7ba1\u7406\u8005 \u592a\u90ce',
-    checkedAt: '2026-05-10',
-    priceHistory: []
-  },
-  {
-    id: 3,
-    code: 'TEMP-003',
-    name: '\u8a66\u4f5c\u30e2\u30b8\u30e5\u30fc\u30ebX',
-    price: 45000,
-    cost: 30000,
-    unit: '\u5f0f',
-    note: '\u8a66\u9a13\u5c0e\u5165\u54c1',
-    isChecked: false,
-    checkedBy: null,
-    checkedAt: null,
-    priceHistory: []
-  },
-];
+// ===== 臨時商品マスタ：Supabaseデータ（temp_products） =====
+let tempProductsData = [];
+
+// temp_products から読み込み（表示用フィールドへ正規化）
+async function loadTempProducts() {
+  const sb = window._sb;
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from('temp_products')
+    .select('id, product_name, unit, unit_price, cost_price, notes, created_at')
+    .order('created_at', { ascending: true });
+  if (error) { console.error('temp_products取得エラー:', error); return []; }
+  tempProductsData = (data || []).map((r, i) => ({
+    id:    r.id,
+    code:  'TEMP-' + String(i + 1).padStart(3, '0'),
+    name:  r.product_name || '',
+    price: r.unit_price != null ? r.unit_price : 0,
+    cost:  r.cost_price != null ? r.cost_price : 0,
+    unit:  r.unit || '',
+    note:  r.notes || ''
+  }));
+  return tempProductsData;
+}
 
 // ===== 臨時商品マスタ：テーブル描画 =====
-function renderTempProductTable() {
+async function renderTempProductTable() {
   const tbody = document.querySelector('#temp-product-table tbody');
   if (!tbody) return;
+  await loadTempProducts();
   tbody.innerHTML = '';
+  if (tempProductsData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:16px;text-align:center;color:#9ca3af;">臨時商品はまだ登録されていません</td></tr>';
+    return;
+  }
   tempProductsData.forEach(product => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${product.code}</td>
       <td>${product.name}</td>
-      <td style="text-align:right;">\u00a5${product.price.toLocaleString()}</td>
-      <td style="text-align:right;">\u00a5${product.cost.toLocaleString()}</td>
+      <td style="text-align:right;">¥${product.price.toLocaleString()}</td>
+      <td style="text-align:right;">¥${product.cost.toLocaleString()}</td>
       <td style="text-align:center;">${product.unit}</td>
-      <td style="color:#6b7280;font-size:12px;">${product.note || '\u2014'}</td>
-      <td style="text-align:center;">
-        <button class="btn-history"
-          onclick="openTempProductEditModal(${product.id})"
-          style="padding:4px 10px;border:1px solid #d1d5db;background:#fff;border-radius:4px;font-size:12px;cursor:pointer;">
-          \u5c65\u6b74\u30fb\u7de8\u96c6
-        </button>
-      </td>
-      <td style="text-align:center;">
-        ${product.isChecked
-          ? `<span style="color:#16a34a;font-weight:600;">\u2714 \u30c1\u30a7\u30c3\u30af\u6e08</span>
-             <br><span style="font-size:11px;color:#6b7280;">${product.checkedBy}\uff08${product.checkedAt}\uff09</span>`
-          : `<button onclick="checkTempProduct(${product.id})"
-               style="padding:4px 12px;background:#f59e0b;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;">
-               \u30c1\u30a7\u30c3\u30af\u3059\u308b
-             </button>`
-        }
-      </td>
+      <td style="color:#6b7280;font-size:12px;">${product.note || '—'}</td>
+      <td style="text-align:center;color:#9ca3af;">—</td>
+      <td style="text-align:center;color:#9ca3af;">—</td>
       <td>
         <button class="btn-edit"
-          onclick="openTempProductEditModal(${product.id})"
+          onclick="openTempProductEditModal('${product.id}')"
           style="padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">
-          \u7de8\u96c6
+          編集
         </button>
       </td>
     `;
@@ -1282,42 +1253,27 @@ function renderTempProductTable() {
   });
 }
 
-// ===== 臨時商品マスタ：管理者チェック =====
-function checkTempProduct(productId) {
-  if (!currentUser || currentUser.role !== 'admin') {
-    alert('\u7ba1\u7406\u8005\u306e\u307f\u3053\u306e\u64cd\u4f5c\u3092\u884c\u3048\u307e\u3059\u3002');
-    return;
-  }
-  const product = tempProductsData.find(p => p.id === productId);
-  if (!product) return;
-
-  const confirmed = confirm(`\u300c${product.name}\u300d\u3092\u4f7f\u7528\u6e08\u307f\u3068\u3057\u3066\u30c1\u30a7\u30c3\u30af\u3057\u307e\u3059\u304b\uff1f`);
-  if (!confirmed) return;
-
-  product.isChecked = true;
-  product.checkedBy = currentUser.name || '\u7ba1\u7406\u8005';
-  product.checkedAt = new Date().toLocaleDateString('ja-JP');
-  renderTempProductTable();
-}
-
-// ===== 臨時商品マスタ：新規登録（スタブ） =====
-function openNewTempProductModal() {
-  const newId = tempProductsData.length > 0 ? Math.max(...tempProductsData.map(p => p.id)) + 1 : 1;
-  const newCode = 'TEMP-' + String(newId).padStart(3, '0');
-  tempProductsData.push({
-    id: newId, code: newCode, name: '', price: 0, cost: 0,
-    unit: '\u500b', note: '', isChecked: false, checkedBy: null, checkedAt: null, priceHistory: []
-  });
-  openTempProductEditModal(newId);
-}
-
-// ===== 臨時商品マスタ：編集モーダル開閉・保存 =====
+// ===== 臨時商品マスタ：新規登録（temp_productsへINSERT） =====
 let editingTempProductId = null;
 
+function openNewTempProductModal() {
+  editingTempProductId = null; // 新規モード
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal('edit-temp-product-code', '（保存時に自動採番）');
+  setVal('edit-temp-product-name', '');
+  setVal('edit-temp-product-price', '');
+  setVal('edit-temp-product-cost', '');
+  setVal('edit-temp-product-unit', '');
+  setVal('edit-temp-product-note', '');
+  const hist = document.getElementById('temp-product-price-history-body');
+  if (hist) hist.innerHTML = '<tr><td colspan="3" style="padding:8px;text-align:center;color:#9ca3af;">履歴なし</td></tr>';
+  document.getElementById('temp-product-edit-modal').style.display = 'flex';
+}
+
 function openTempProductEditModal(productId) {
-  const product = tempProductsData.find(p => p.id === productId);
+  const product = tempProductsData.find(p => String(p.id) === String(productId));
   if (!product) return;
-  editingTempProductId = productId;
+  editingTempProductId = productId; // 既存モード（uuid）
 
   document.getElementById('edit-temp-product-code').value  = product.code  || '';
   document.getElementById('edit-temp-product-name').value  = product.name  || '';
@@ -1327,21 +1283,7 @@ function openTempProductEditModal(productId) {
   document.getElementById('edit-temp-product-note').value  = product.note  || '';
 
   const tbody = document.getElementById('temp-product-price-history-body');
-  tbody.innerHTML = '';
-  const history = product.priceHistory || [];
-  if (history.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="padding:8px;text-align:center;color:#9ca3af;">\u5c65\u6b74\u306a\u3057</td></tr>';
-  } else {
-    history.forEach(h => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="padding:6px 10px;border:1px solid #e5e7eb;">${h.date}</td>
-        <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">\u00a5${Number(h.price).toLocaleString()}</td>
-        <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right;">\u00a5${Number(h.cost).toLocaleString()}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
+  if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="padding:8px;text-align:center;color:#9ca3af;">履歴なし</td></tr>';
 
   document.getElementById('temp-product-edit-modal').style.display = 'flex';
 }
@@ -1351,30 +1293,46 @@ function closeTempProductEditModal() {
   editingTempProductId = null;
 }
 
-function saveTempProductEdit() {
-  const product = tempProductsData.find(p => p.id === editingTempProductId);
-  if (!product) return;
+async function saveTempProductEdit() {
+  const sb = window._sb;
+  const name  = document.getElementById('edit-temp-product-name').value.trim();
+  const price = parseInt(document.getElementById('edit-temp-product-price').value) || 0;
+  const cost  = parseInt(document.getElementById('edit-temp-product-cost').value)  || 0;
+  const unit  = document.getElementById('edit-temp-product-unit').value.trim();
+  const note  = document.getElementById('edit-temp-product-note').value.trim();
 
-  const newPrice = parseInt(document.getElementById('edit-temp-product-price').value) || 0;
-  const newCost  = parseInt(document.getElementById('edit-temp-product-cost').value)  || 0;
+  if (!name) { alert('商品名を入力してください'); return; }
 
-  if (newPrice !== product.price || newCost !== product.cost) {
-    if (!product.priceHistory) product.priceHistory = [];
-    product.priceHistory.unshift({
-      date:  new Date().toLocaleDateString('ja-JP'),
-      price: product.price,
-      cost:  product.cost
-    });
+  try {
+    if (editingTempProductId == null) {
+      // 新規登録 → temp_products へ INSERT
+      const { error } = await sb.from('temp_products').insert({
+        product_name: name,
+        unit:         unit || null,
+        unit_price:   price,
+        cost_price:   cost,
+        notes:        note || null
+      });
+      if (error) throw error;
+      alert(`臨時商品「${name}」を登録しました`);
+    } else {
+      // 既存更新 → temp_products を UPDATE
+      const { error } = await sb.from('temp_products').update({
+        product_name: name,
+        unit:         unit || null,
+        unit_price:   price,
+        cost_price:   cost,
+        notes:        note || null
+      }).eq('id', editingTempProductId);
+      if (error) throw error;
+      alert(`臨時商品「${name}」を更新しました`);
+    }
+    closeTempProductEditModal();
+    await renderTempProductTable();
+  } catch (err) {
+    console.error('saveTempProductEdit error:', err);
+    alert('臨時商品の保存に失敗しました: ' + (err.message || err));
   }
-
-  product.name  = document.getElementById('edit-temp-product-name').value;
-  product.price = newPrice;
-  product.cost  = newCost;
-  product.unit  = document.getElementById('edit-temp-product-unit').value;
-  product.note  = document.getElementById('edit-temp-product-note').value;
-
-  closeTempProductEditModal();
-  renderTempProductTable();
 }
 
 // ===== 売価・原価マスタ =====
