@@ -2690,7 +2690,7 @@ async function renderMembersTable(filter) {
   if (!sb) return;
   const { data: rows, error } = await sb
     .from('members')
-    .select('id, last_name, first_name, email, role, is_initial_pw, auth_uid')
+    .select('last_name, first_name, email, role, is_initial_pw, auth_uid')
     .order('created_at', { ascending: true });
   if (error) {
     console.error('members取得エラー:', error);
@@ -2773,37 +2773,43 @@ function openEditMember(email) {
   openModal('member-edit-modal');
 }
 
-function saveMemberEdit() {
+async function saveMemberEdit() {
+  // 注: このフォームは氏名を1フィールド(edit-member-name)で扱うため、
+  //     スペースで姓・名に分割して last_name / first_name に保存する。
   const origEmail = document.getElementById('edit-member-email-orig').value;
-  const m = MEMBERS_DB.find(x => x.email === origEmail);
-  if (!m) return;
+  const newRole   = document.getElementById('edit-member-role').value;
+  const fullName  = document.getElementById('edit-member-name') ? document.getElementById('edit-member-name').value.trim() : '';
+  const nameParts = fullName ? fullName.split(/\s+/) : [];
+  const lastName  = nameParts[0] || '';
+  const firstName = nameParts.slice(1).join(' ');
 
-  const newEmail = document.getElementById('edit-member-email').value.trim();
-  const newName = document.getElementById('edit-member-name').value.trim();
-  const newCompany = document.getElementById('edit-member-company').value.trim();
-  const newPhone = document.getElementById('edit-member-phone').value.trim();
-  const newRole = document.getElementById('edit-member-role').value;
+  const sb = window._sb;
+  if (!sb) return;
 
-  if (!newEmail || !newName) {
-    alert('氏名とメールアドレスは必須です。');
+  const updateData = { role: newRole };
+  if (lastName)  updateData.last_name  = lastName;
+  if (firstName) updateData.first_name = firstName;
+
+  const { error } = await sb
+    .from('members')
+    .update(updateData)
+    .eq('email', origEmail);
+
+  if (error) {
+    alert('更新エラー: ' + error.message);
     return;
   }
 
-  m.email = newEmail;
-  m.name = newName;
-  m.company = newCompany;
-  m.phone = newPhone;
-  m.role = newRole;
-
-  // 現在ログイン中のユーザーが自分自身を編集した場合は currentUser も更新
+  // 自分自身を編集した場合はwindow.currentUserも更新
   if (window.currentUser && window.currentUser.email === origEmail) {
-    window.currentUser = m;
+    window.currentUser.role = newRole;
+    if (lastName && firstName) window.currentUser.name = lastName + ' ' + firstName;
     const label = document.getElementById('sidebar-user-label');
     if (label) label.textContent = window.currentUser.name + (window.currentUser.role === 'admin' ? '（管理者）' : '');
   }
 
   closeModal('member-edit-modal');
-  renderMembersTable();
+  renderMembersTable('');
 }
 
 // =========================================================
@@ -2837,17 +2843,33 @@ function openDeleteMember(email) {
   openModal('member-delete-modal');
 }
 
-function executeDeleteMember() {
-  if (window.currentUser && window.currentUser.email === _deleteTargetEmail) {
+async function executeDeleteMember() {
+  const email = _deleteTargetEmail;
+  if (!email) return;
+
+  // 自分自身は削除不可（openDeleteMemberでボタンも無効化済みだが二重ガード）
+  if (window.currentUser && window.currentUser.email === email) {
     const errEl = document.getElementById('delete-member-error');
     errEl.textContent = '現在ログイン中のユーザー自身は削除できません。';
     errEl.style.display = 'block';
     return;
   }
-  const idx = MEMBERS_DB.findIndex(x => x.email === _deleteTargetEmail);
-  if (idx !== -1) MEMBERS_DB.splice(idx, 1);
+
+  const sb = window._sb;
+  if (!sb) return;
+
+  const { error } = await sb
+    .from('members')
+    .delete()
+    .eq('email', email);
+
+  if (error) {
+    alert('削除エラー: ' + error.message);
+    return;
+  }
+
   closeModal('member-delete-modal');
-  renderMembersTable();
+  renderMembersTable('');
 }
 
 // =========================================================
@@ -2865,42 +2887,44 @@ function openAddMemberModal() {
   openModal('modal-add-member');
 }
 
-function submitAddMember() {
-  const name    = document.getElementById('add-member-name').value.trim();
-  const email   = document.getElementById('add-member-email').value.trim();
-  const company = document.getElementById('add-member-company').value.trim();
-  const phone   = document.getElementById('add-member-phone').value.trim();
-  const role    = document.getElementById('add-member-role').value;
-  const errEl   = document.getElementById('add-member-error');
+async function submitAddMember() {
+  // 注: 氏名は1フィールド(add-member-name)。スペースで姓・名に分割して保存。
+  //     members テーブルに phone / company カラムは存在しないため insert しない。
+  const fullName  = document.getElementById('add-member-name') ? document.getElementById('add-member-name').value.trim() : '';
+  const email     = document.getElementById('add-member-email').value.trim();
+  const role      = document.getElementById('add-member-role').value;
+  const errEl     = document.getElementById('add-member-error');
+  const nameParts = fullName ? fullName.split(/\s+/) : [];
+  const lastName  = nameParts[0] || '';
+  const firstName = nameParts.slice(1).join(' ');
 
-  // 必須チェック
-  if (!name || !email || !company || !phone) {
-    errEl.textContent = 'すべての項目を入力してください。';
+  if (!email) {
+    errEl.textContent = 'メールアドレスを入力してください。';
     errEl.style.display = 'block';
     return;
   }
 
-  // メールアドレス重複チェック
-  const dup = MEMBERS_DB.find(m => m.email === email);
-  if (dup) {
-    errEl.textContent = 'このメールアドレスはすでに登録されています。';
+  const sb = window._sb;
+  if (!sb) return;
+
+  const { error } = await sb
+    .from('members')
+    .insert({
+      last_name:     lastName  || '未設定',
+      first_name:    firstName || '',
+      email:         email,
+      role:          role,
+      is_initial_pw: true
+    });
+
+  if (error) {
+    errEl.textContent = '追加エラー: ' + error.message;
     errEl.style.display = 'block';
     return;
   }
-
-  // DB に追加
-  MEMBERS_DB.push({
-    name:        name,
-    email:       email,
-    company:     company,
-    phone:       phone,
-    role:        role,
-    password:    'axis0120',
-    isInitialPw: true
-  });
 
   closeModal('modal-add-member');
-  renderMembersTable();
+  renderMembersTable('');
 }
 
 // =========================================================
