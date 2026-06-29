@@ -3001,7 +3001,7 @@ async function submitAddMember() {
   }
 
   closeModal('modal-add-member');
-  renderMembersTable('');
+  await renderMembersTable('');
 }
 
 // =========================================================
