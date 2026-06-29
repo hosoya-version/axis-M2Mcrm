@@ -98,7 +98,9 @@ function updateStep4Products() {
 }
 
 // ===== ナビゲーション =====
-function navigate(page) {
+// pushHistory=true のとき history.pushState でブラウザ履歴に積む（Chrome戻る対応）。
+// popstate からの呼び出しでは pushHistory=false にして二重登録を防ぐ。
+function navigate(page, pushHistory = true) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
 
@@ -107,44 +109,62 @@ function navigate(page) {
 
   const navItem = document.querySelector(`[data-page="${page}"]`);
   if (navItem) navItem.classList.add('active');
+
+  if (pushHistory) {
+    history.pushState({ screen: page }, '', '#' + page);
+  }
+}
+
+// 各ページのデータ読み込み（サイドバークリックと popstate の両方から呼ぶ）
+function loadPageData(page) {
+  if (page === 'companies') {
+    companyCurrentPage = 1;
+    loadCompanies();
+    applyCompanyFilter();
+  } else if (page === 'contacts') {
+    loadContacts().then(() => {
+      initContactFilter();
+      applyContactFilter();
+    });
+  } else if (page === 'agencies') {
+    renderAgencyTable();
+  } else if (page === 'products') {
+    renderProductTable();
+  } else if (page === 'orders') {
+    loadOrders().then(() => {
+      initOrderFilter();
+      applyOrderFilter();
+    });
+  } else if (page === 'temp-products') {
+    renderTempProductTable();
+  } else if (page === 'payments') {
+    loadUnpaidPayments();
+  } else if (page === 'sales-a') {
+    // 機器販売（A）は loadOrders が salesAData を投入するため、
+    // 最新データを取得してから描画する
+    loadOrders().then(() => renderSalesATable());
+  } else if (page === 'sales-b') {
+    loadOrders().then(() => { if (typeof renderSalesBTable === 'function') renderSalesBTable(); });
+  } else if (page === 'sales-c') {
+    renderServiceCList();
+  }
 }
 
 // サイドバーメニュー初期化
 document.querySelectorAll('.sidebar-item[data-page]').forEach(item => {
   item.addEventListener('click', () => {
     navigate(item.dataset.page);
-    if (item.dataset.page === 'companies') {
-      companyCurrentPage = 1;
-      loadCompanies();
-      applyCompanyFilter();
-    } else if (item.dataset.page === 'contacts') {
-      loadContacts().then(() => {
-        initContactFilter();
-        applyContactFilter();
-      });
-    } else if (item.dataset.page === 'agencies') {
-      renderAgencyTable();
-    } else if (item.dataset.page === 'products') {
-      renderProductTable();
-    } else if (item.dataset.page === 'orders') {
-      loadOrders().then(() => {
-        initOrderFilter();
-        applyOrderFilter();
-      });
-    } else if (item.dataset.page === 'temp-products') {
-      renderTempProductTable();
-    } else if (item.dataset.page === 'payments') {
-      loadUnpaidPayments();
-    } else if (item.dataset.page === 'sales-a') {
-      // 機器販売（A）は loadOrders が salesAData を投入するため、
-      // 最新データを取得してから描画する
-      loadOrders().then(() => renderSalesATable());
-    } else if (item.dataset.page === 'sales-b') {
-      loadOrders().then(() => { if (typeof renderSalesBTable === 'function') renderSalesBTable(); });
-    } else if (item.dataset.page === 'sales-c') {
-      renderServiceCList();
-    }
+    loadPageData(item.dataset.page);
   });
+});
+
+// ブラウザの戻る／進むボタン対応：履歴状態またはURLハッシュから画面を復元
+window.addEventListener('popstate', (e) => {
+  let page = (e.state && e.state.screen) ? e.state.screen
+           : (window.location.hash || '').replace('#', '');
+  if (!page) page = 'dashboard';
+  navigate(page, false);   // 履歴は積まずに画面のみ復元
+  loadPageData(page);
 });
 
 // 初回ロード時の初期化
@@ -161,6 +181,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initOrderFilter();
   applyOrderFilter();
   initPdfDropZone();
+
+  // Chrome戻る対応：初回ロード時のベースライン履歴を確立し、
+  // URLハッシュがあればその画面を復元する
+  const initialHash = (window.location.hash || '').replace('#', '');
+  const initialPage = initialHash || 'dashboard';
+  history.replaceState({ screen: initialPage }, '', '#' + initialPage);
+  if (initialHash) {
+    navigate(initialHash, false);
+    loadPageData(initialHash);
+  }
 });
 
 // ===== 企業管理：Supabaseデータ =====
